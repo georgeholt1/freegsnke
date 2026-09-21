@@ -1,12 +1,11 @@
 from copy import deepcopy
 from pathlib import Path
 
-import freegs4e
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
-from freegs4e.critical import find_critical
-from freegs4e.plotting import plotConstraints
+from freegsnke.critical import find_critical
+from freegsnke.plotting import plotConstraints
 from IPython.display import clear_output, display
 from matplotlib.widgets import Slider
 
@@ -219,7 +218,8 @@ def test_limiter_reduced_boundary_green_is_exact(create_machine):
 
     solver = GSstaticsolver.NKGSsolver(eq)
     boundary_indices = solver.bndry_indices
-    full_green = freegs4e.gradshafranov.Greens(
+    from freegsnke.gradshafranov import Greens
+    full_green = Greens(
         eq.R[np.newaxis, :, :],
         eq.Z[np.newaxis, :, :],
         eq.R[:, 0][boundary_indices[:, 0]][:, np.newaxis, np.newaxis],

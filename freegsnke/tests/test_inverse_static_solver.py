@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
-from freegs4e.critical import find_critical
+from freegsnke.critical import find_critical
 
 from freegsnke import GSstaticsolver, build_machine, equilibrium_update
 from freegsnke.inverse import Inverse_optimizer
