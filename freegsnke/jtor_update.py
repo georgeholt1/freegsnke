@@ -19,16 +19,15 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import freegs4e.jtor
 import numpy as np
-from freegs4e.gradshafranov import mu0
 from matplotlib.path import Path
 from scipy.ndimage import maximum_filter
 from skimage import measure
 
-from . import jtor_refinement
+from . import jtor, jtor_refinement
 from . import switch_profile as swp
 from .copying import copy_into
+from .gradshafranov import mu0
 
 
 class Jtor_universal:
@@ -678,7 +677,7 @@ class Jtor_universal:
         return self.jtor
 
 
-class ConstrainBetapIp(freegs4e.jtor.ConstrainBetapIp, Jtor_universal):
+class ConstrainBetapIp(jtor.ConstrainBetapIp, Jtor_universal):
     """
     Betap–Ip constrained toroidal current profile with FreeGSNKE extensions.
 
@@ -695,7 +694,7 @@ class ConstrainBetapIp(freegs4e.jtor.ConstrainBetapIp, Jtor_universal):
         eq : FreeGSNKE Equilibrium object
             Equilibrium object defining grid geometry and limiter structure.
         """
-        freegs4e.jtor.ConstrainBetapIp.__init__(self, *args, **kwargs)
+        jtor.ConstrainBetapIp.__init__(self, *args, **kwargs)
         Jtor_universal.__init__(self)
 
         # profiles need Ip normalization
@@ -780,7 +779,7 @@ class ConstrainBetapIp(freegs4e.jtor.ConstrainBetapIp, Jtor_universal):
         return alpha, beta
 
 
-class ConstrainPaxisIp(freegs4e.jtor.ConstrainPaxisIp, Jtor_universal):
+class ConstrainPaxisIp(jtor.ConstrainPaxisIp, Jtor_universal):
     """
     Paxis–Ip constrained toroidal current profile with FreeGSNKE extensions.
 
@@ -797,7 +796,7 @@ class ConstrainPaxisIp(freegs4e.jtor.ConstrainPaxisIp, Jtor_universal):
         eq : FreeGSNKE Equilibrium object
             Equilibrium object defining grid geometry and limiter structure.
         """
-        freegs4e.jtor.ConstrainPaxisIp.__init__(self, *args, **kwargs)
+        jtor.ConstrainPaxisIp.__init__(self, *args, **kwargs)
         Jtor_universal.__init__(self)
 
         # profiles need Ip normalization
@@ -884,7 +883,7 @@ class ConstrainPaxisIp(freegs4e.jtor.ConstrainPaxisIp, Jtor_universal):
         return alpha, beta
 
 
-class Fiesta_Topeol(freegs4e.jtor.Fiesta_Topeol, Jtor_universal):
+class Fiesta_Topeol(jtor.Fiesta_Topeol, Jtor_universal):
     """
     Fiesta Topeol constrained toroidal current profile with FreeGSNKE extensions.
 
@@ -901,7 +900,7 @@ class Fiesta_Topeol(freegs4e.jtor.Fiesta_Topeol, Jtor_universal):
         eq : FreeGSNKE Equilibrium object
             Equilibrium object defining grid geometry and limiter structure.
         """
-        freegs4e.jtor.Fiesta_Topeol.__init__(self, *args, **kwargs)
+        jtor.Fiesta_Topeol.__init__(self, *args, **kwargs)
         Jtor_universal.__init__(self)
 
         # profiles need Ip normalization
@@ -986,7 +985,7 @@ class Fiesta_Topeol(freegs4e.jtor.Fiesta_Topeol, Jtor_universal):
         return alpha, beta
 
 
-class Lao85(freegs4e.jtor.Lao85, Jtor_universal):
+class Lao85(jtor.Lao85, Jtor_universal):
     """
     Lao 1985 constrained toroidal current profile with FreeGSNKE extensions.
 
@@ -1009,7 +1008,7 @@ class Lao85(freegs4e.jtor.Lao85, Jtor_universal):
         nny : int
             Refinement factor in the Z-direction (must be even if used).
         """
-        freegs4e.jtor.Lao85.__init__(self, *args, **kwargs)
+        jtor.Lao85.__init__(self, *args, **kwargs)
         self.set_masks(eq=eq)
         self.select_refinement(eq, refine_jtor, nnx, nny)
 
@@ -1082,7 +1081,7 @@ class Lao85(freegs4e.jtor.Lao85, Jtor_universal):
         return pars
 
 
-class TensionSpline(freegs4e.jtor.TensionSpline, Jtor_universal):
+class TensionSpline(jtor.TensionSpline, Jtor_universal):
     """
     Tension spline constrained toroidal current profile with FreeGSNKE extensions.
 
@@ -1100,7 +1099,7 @@ class TensionSpline(freegs4e.jtor.TensionSpline, Jtor_universal):
             Equilibrium object defining grid geometry and limiter structure.
         """
 
-        freegs4e.jtor.TensionSpline.__init__(self, *args, **kwargs)
+        jtor.TensionSpline.__init__(self, *args, **kwargs)
         Jtor_universal.__init__(self)
 
         self.profile_parameter = [
@@ -1210,7 +1209,7 @@ class TensionSpline(freegs4e.jtor.TensionSpline, Jtor_universal):
         ]
 
 
-class GeneralPprimeFFprime(freegs4e.jtor.GeneralPprimeFFprime, Jtor_universal):
+class GeneralPprimeFFprime(jtor.GeneralPprimeFFprime, Jtor_universal):
     """
     General unconstrained toroidal current profile with FreeGSNKE extensions.
 
@@ -1228,7 +1227,7 @@ class GeneralPprimeFFprime(freegs4e.jtor.GeneralPprimeFFprime, Jtor_universal):
             Equilibrium object defining grid geometry and limiter structure.
         """
 
-        freegs4e.jtor.GeneralPprimeFFprime.__init__(self, *args, **kwargs)
+        jtor.GeneralPprimeFFprime.__init__(self, *args, **kwargs)
         Jtor_universal.__init__(self)
 
         self.profile_parameter = []

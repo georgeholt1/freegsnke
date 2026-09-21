@@ -22,19 +22,17 @@ along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 import os
 import pickle
 
-import freegs4e.equilibrium
 import matplotlib.pyplot as plt
 import numpy as np
-from freegs4e import critical
 from scipy import interpolate
 
-from . import limiter_func
+from . import critical, equilibrium, limiter_func
 from .build_machine import copy_tokamak
 from .copying import copy_into
 
 
-class Equilibrium(freegs4e.equilibrium.Equilibrium):
-    """FreeGS4E equilibrium class with optional initialization."""
+class Equilibrium(equilibrium.Equilibrium):
+    """Equilibrium class with optional initialization."""
 
     def __init__(self, *args, **kwargs):
         """Instantiates the object."""

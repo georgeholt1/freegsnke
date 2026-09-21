@@ -188,7 +188,7 @@ class Limiter_handler:
         ----------
         eq : FreeGSNKE Equilibrium object
             Specifies the domain properties
-        limiter : freegs4e.machine.Wall object
+        limiter : freegsnke.machine.Wall object
             Specifies the limiter contour points
         Returns
         -------

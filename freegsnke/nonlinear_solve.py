@@ -26,8 +26,8 @@ from copy import deepcopy
 
 import matplotlib.pyplot as plt
 import numpy as np
-from freegs4e import bilinear_interpolation
-from freegs4e.gradshafranov import GreensBr, GreensdBrdz
+from . import bilinear_interpolation
+from .gradshafranov import GreensBr, GreensdBrdz
 from scipy.signal import convolve2d
 from threadpoolctl import threadpool_limits
 

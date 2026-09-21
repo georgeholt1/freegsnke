@@ -63,7 +63,7 @@ class OutputFile(object):
 
     Given an Equilibrium object, eq, write to file like:
 
-    >>> with freegs4e.OutputFile("test_readwrite.h5", 'w') as f:
+    >>> with freegsnke.OutputFile("test_readwrite.h5", 'w') as f:
     ...     f.write_equilibrium(eq)
 
     Read back into an Equilibrium like so:

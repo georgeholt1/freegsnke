@@ -30,7 +30,7 @@ import numpy as np
 import pyuda
 import scipy as sp
 import shapely as sh
-from freegs4e import critical
+from . import critical
 from numpy import abs, argmax, clip, linspace, pi
 from numpy.polynomial import Polynomial
 from scipy.interpolate import interp1d

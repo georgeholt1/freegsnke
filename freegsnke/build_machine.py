@@ -24,9 +24,9 @@ import pickle
 from copy import deepcopy
 
 import numpy as np
-from freegs4e.coil import Coil
-from freegs4e.machine import Circuit, Wall
-from freegs4e.multi_coil import MultiCoil
+from .coil import Coil
+from .machine import Circuit, Wall
+from .multi_coil import MultiCoil
 
 from .copying import copy_into
 from .machine_config import (

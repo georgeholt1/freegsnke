@@ -45,7 +45,7 @@ def solve(
     Notes
     -----
     This is not a supported FreeGSNKE backend entry point. In particular, the
-    original inverse workflow using ``freegs4e.control`` is known not to satisfy
+    original inverse workflow using ``freegsnke.control`` is known not to satisfy
     its inherited regression setup.
 
     eq       - an Equilibrium object (equilibrium.py)
