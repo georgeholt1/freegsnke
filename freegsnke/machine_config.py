@@ -290,11 +290,12 @@ def _calc_resistance_entry(tokamak, coil_name):
     """Calculate the unscaled resistance entry for one coil label."""
 
     coords = tokamak.coils_dict[coil_name]["coords"]
-    return (
+    val = (
         tokamak.coils_dict[coil_name]["resistivity_over_area"]
         * tokamak.coils_dict[coil_name]["multiplier"][0]
         * np.sum(coords[0])
     )
+    return float(np.asarray(val).squeeze())
 
 
 def _calc_mutual_inductance_entry(tokamak, name_i, name_j):
