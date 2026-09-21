@@ -871,7 +871,8 @@ class NKGSsolver:
             # If critical points disappear, shrink step
             # --------------------------------------------------------
             new_residual_flag = True
-            while new_residual_flag:
+            n_shrink = 0
+            while new_residual_flag and n_shrink < 40:
                 try:
                     # check update does not cause the disappearance of the Opoint
                     n_trial_plasma_psi = trial_plasma_psi + update
@@ -892,6 +893,13 @@ class NKGSsolver:
                         "Update resizing triggered due to failure to find a critical points."
                     )
                     update *= 0.75
+                    n_shrink += 1
+
+            if new_residual_flag:
+                log.append(
+                    "Update resizing failed to find critical points after 40 reductions, terminating solve."
+                )
+                break
 
             # --------------------------------------------------------
             # Accept or reject update
@@ -942,7 +950,8 @@ class NKGSsolver:
                 log.append("Increase in residual, update reduction triggered.")
                 # log.append(reduce_by)
                 new_residual_flag = True
-                while new_residual_flag:
+                n_shrink = 0
+                while new_residual_flag and n_shrink < 40:
                     try:
                         n_trial_plasma_psi = trial_plasma_psi + update * reduce_by
                         res0 = self.F_function(
@@ -952,6 +961,13 @@ class NKGSsolver:
                     except:
                         log.append("reduction!")
                         reduce_by *= 0.75
+                        n_shrink += 1
+
+                if new_residual_flag:
+                    log.append(
+                        "Update reduction failed to find valid residual after 40 reductions, terminating solve."
+                    )
+                    break
 
                 starting_direction = np.copy(res0)
                 trial_plasma_psi = n_trial_plasma_psi.copy()
