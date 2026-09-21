@@ -18,7 +18,7 @@
 
 FreeGSNKE (pronounced "free-gee-snake") is a **Python**-based code for **simulating the evolution of free-boundary tokamak plasma equilibria**.
 
-FreeGSNKE uses [FreeGS4E](https://github.com/FusionComputingLab/freegs4e), an LGPL-licensed fork of [FreeGS](https://github.com/bendudson/freegs), as its Grad-Shafranov equilibrium backend.
+FreeGSNKE includes an integrated Grad-Shafranov equilibrium backend derived from [FreeGS4E](https://github.com/FusionComputingLab/freegs4e) and [FreeGS](https://github.com/bendudson/freegs).
 
 **NOTE:**  We recommended reading this page in its entirety before attempting to install or run FreeGSNKE!
 
@@ -270,6 +270,10 @@ This work was funded under the Fusion Computing Lab collaboration between the ST
 
 ## License
 
-FreeGSNKE is distributed under the GNU Lesser General Public License v3.0. See the [LICENSE](LICENSE) file or the [GNU website](https://www.gnu.org/licenses/lgpl-3.0.en.html) for more details.
+FreeGSNKE is distributed under the GNU Lesser General Public License v3.0. See the [LICENSE](LICENSE) and [COPYRIGHT](COPYRIGHT) files or the [GNU website](https://www.gnu.org/licenses/lgpl-3.0.en.html) for more details.
+
+FreeGSNKE incorporates components originally developed as part of FreeGS4E and FreeGS:
+- FreeGS4E: Copyright 2024–2025 Nicola C. Amorisco, George K. Holt, Adriano Agnello, and other contributors (LGPLv3).
+- FreeGS: Copyright 2016–2021 Ben Dudson, University of York, and other contributors (LGPLv3).
 
 The authors are also willing to discuss alternative licensing arrangements if required.

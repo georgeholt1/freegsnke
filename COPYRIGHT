@@ -9,6 +9,10 @@ Copyright 2025 UKAEA, The Authors: Nicola C. Amorisco, Kamran Pentland
 Other contributing Authors include the following:
 Authors: Matthijs Mars (UCL MSSL).
 
+This software incorporates FreeGS4E and code derived from FreeGS:
+Copyright 2024-2025 Nicola C. Amorisco, George K. Holt, Adriano Agnello, and other contributors.
+Copyright 2016-2021 Ben Dudson, University of York, and other contributors (benjamin.dudson@york.ac.uk).
+
 FreeGSNKE is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
