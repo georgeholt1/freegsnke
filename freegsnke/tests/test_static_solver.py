@@ -240,3 +240,59 @@ def test_limiter_reduced_boundary_green_is_exact(create_machine):
     actual = solver._boundary_flux_from_jtor(jtor)
 
     np.testing.assert_allclose(actual, expected, rtol=2e-14, atol=1e-14)
+
+
+def test_static_solve_ilu(create_machine):
+    """The static solver with ILU linear preconditioning produces a consistent equilibrium."""
+    eq, profiles, _ = create_machine
+
+    from freegsnke import GSstaticsolver
+
+    eq.tokamak.set_coil_current("P6", 0)
+    eq.tokamak["P6"].control = False
+    eq.tokamak["Solenoid"].control = False
+    eq.tokamak.set_coil_current("Solenoid", 15000)
+    eq.tokamak.setControlCurrents(np.load(STATIC_CURRENT_BASELINE))
+
+    solver = GSstaticsolver.NKGSsolver(eq, linear_solver="ilu")
+    solver.forward_solve(eq, profiles, 1e-8, suppress=True)
+
+    reference_psi = np.load(STATIC_PSI_BASELINE)
+    tolerance = np.ptp(reference_psi) * 0.003
+    assert solver.linear_solver == "ilu"
+    assert np.allclose(eq.psi(), reference_psi, atol=tolerance)
+    assert np.allclose(
+        eq.psi_func(eq.R, eq.Z, grid=False), eq.plasma_psi
+    ), "Plasma-flux interpolator is stale after the solve"
+
+
+def test_second_order_static_solve_ilu(create_machine):
+    """Second-order operator with ILU linear preconditioning produces consistent equilibrium."""
+    eq, profiles, _ = create_machine
+
+    from freegsnke import GSstaticsolver
+
+    eq.tokamak.set_coil_current("P6", 0)
+    eq.tokamak["P6"].control = False
+    eq.tokamak["Solenoid"].control = False
+    eq.tokamak.set_coil_current("Solenoid", 15000)
+    eq.tokamak.setControlCurrents(np.load(STATIC_CURRENT_BASELINE))
+
+    solver = GSstaticsolver.NKGSsolver(eq, gs_operator_order=2, linear_solver="ilu")
+    solver.forward_solve(eq, profiles, 1e-8, suppress=True)
+
+    reference_psi = np.load(STATIC_PSI_BASELINE)
+    tolerance = np.ptp(reference_psi) * 0.003
+    assert solver.gs_operator_order == 2
+    assert solver.linear_solver == "ilu"
+    assert np.allclose(eq.psi(), reference_psi, atol=tolerance)
+
+
+def test_static_solver_rejects_invalid_linear_solver(create_machine):
+    """Only supported linear solvers ('direct', 'ilu') are accepted."""
+    eq, _, _ = create_machine
+
+    from freegsnke import GSstaticsolver
+
+    with pytest.raises(ValueError, match="linear_solver"):
+        GSstaticsolver.NKGSsolver(eq, linear_solver="unsupported_solver")
