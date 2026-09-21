@@ -74,6 +74,7 @@ class NKGSsolver:
         collinearity_reg=1e-6,
         seed=42,
         gs_operator_order=4,
+        surrogate=None,
     ):
         """
         Initialise the Grad–Shafranov nonlinear solver.
@@ -215,6 +216,9 @@ class NKGSsolver:
 
         # random generator used for NK search direction exploration
         self.rng = np.random.default_rng(seed=seed)
+
+        # optional default surrogate guess provider
+        self.surrogate = surrogate
 
     def _build_boundary_green(self, source_mask):
         """Build the boundary Green matrix for a selected set of source points."""
@@ -613,6 +617,7 @@ class NKGSsolver:
         force_up_down_symmetric=False,
         verbose=False,
         suppress=False,
+        surrogate=None,
     ):
         """
         Solve the forward static Grad–Shafranov (GS) equilibrium problem.
@@ -720,6 +725,26 @@ class NKGSsolver:
             verbose = False
 
         picard_flag = 0
+
+        # ------------------------------------------------------------
+        # Apply surrogate initial guess if configured or requested
+        # ------------------------------------------------------------
+        if surrogate is None:
+            surrogate = getattr(self, "surrogate", None)
+
+        if surrogate is not None:
+            if surrogate is True:
+                from .surrogate import SurrogateInitialGuess
+
+                surr = SurrogateInitialGuess()
+                surr.apply(eq, profiles)
+            elif callable(surrogate):
+                if hasattr(surrogate, "apply"):
+                    surrogate.apply(eq, profiles)
+                else:
+                    guess = surrogate(eq, profiles)
+                    eq._updatePlasmaPsi(guess)
+                    eq.solved = False
 
         # ------------------------------------------------------------
         # Initial trial plasma flux
@@ -871,8 +896,7 @@ class NKGSsolver:
             # If critical points disappear, shrink step
             # --------------------------------------------------------
             new_residual_flag = True
-            n_shrink = 0
-            while new_residual_flag and n_shrink < 40:
+            while new_residual_flag:
                 try:
                     # check update does not cause the disappearance of the Opoint
                     n_trial_plasma_psi = trial_plasma_psi + update
@@ -893,13 +917,6 @@ class NKGSsolver:
                         "Update resizing triggered due to failure to find a critical points."
                     )
                     update *= 0.75
-                    n_shrink += 1
-
-            if new_residual_flag:
-                log.append(
-                    "Update resizing failed to find critical points after 40 reductions, terminating solve."
-                )
-                break
 
             # --------------------------------------------------------
             # Accept or reject update
@@ -950,8 +967,7 @@ class NKGSsolver:
                 log.append("Increase in residual, update reduction triggered.")
                 # log.append(reduce_by)
                 new_residual_flag = True
-                n_shrink = 0
-                while new_residual_flag and n_shrink < 40:
+                while new_residual_flag:
                     try:
                         n_trial_plasma_psi = trial_plasma_psi + update * reduce_by
                         res0 = self.F_function(
@@ -961,13 +977,6 @@ class NKGSsolver:
                     except:
                         log.append("reduction!")
                         reduce_by *= 0.75
-                        n_shrink += 1
-
-                if new_residual_flag:
-                    log.append(
-                        "Update reduction failed to find valid residual after 40 reductions, terminating solve."
-                    )
-                    break
 
                 starting_direction = np.copy(res0)
                 trial_plasma_psi = n_trial_plasma_psi.copy()
@@ -1961,6 +1970,7 @@ class NKGSsolver:
         force_up_down_symmetric=False,
         verbose=False,
         suppress=False,
+        surrogate=None,
     ):
         """
         Unified entry point for solving Grad–Shafranov problems
@@ -2171,6 +2181,7 @@ class NKGSsolver:
                 max_rel_update_size=max_rel_update_size,
                 force_up_down_symmetric=force_up_down_symmetric,
                 suppress=suppress,
+                surrogate=surrogate,
             )
         # ============================================================
         # Inverse GS solve
