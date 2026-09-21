@@ -26,6 +26,7 @@ import numpy as np
 from freegs4e.gradshafranov import Greens
 
 from . import nk_solver_H as nk_solver
+from .linear_gs_solver import create_linear_gs_solver
 
 
 class NKGSsolver:
@@ -74,6 +75,8 @@ class NKGSsolver:
         collinearity_reg=1e-6,
         seed=42,
         gs_operator_order=4,
+        linear_solver="direct",
+        linear_solver_options=None,
     ):
         """
         Initialise the Grad–Shafranov nonlinear solver.
@@ -81,7 +84,7 @@ class NKGSsolver:
         The constructor prepares all numerical operators required for
         nonlinear GS solving, including:
 
-            • Direct sparse linear GS solver
+            • Direct or ILU preconditioned sparse linear GS solver
             • Green's function boundary response operator
             • Newton–Krylov nonlinear solver backend
             • Random generator for Krylov direction perturbations
@@ -117,6 +120,15 @@ class NKGSsolver:
             construction and factorisation costs when that accuracy trade-off
             is acceptable.
 
+        linear_solver : {"direct", "ilu"}, optional (default="direct")
+            Type of linear solver to use for the linearised GS problem at the bottom
+            of the Newton-Krylov loop. "direct" uses LU factorisation; "ilu" uses
+            Incomplete LU preconditioning.
+
+        linear_solver_options : dict, optional (default=None)
+            Additional keyword options passed to the linear solver (e.g. method,
+            n_refine, fill_factor, drop_tol, rtol, atol, maxiter).
+
         Attributes
         ----------
         self.R, self.Z : ndarray
@@ -128,8 +140,14 @@ class NKGSsolver:
         self.dRdZ : float
             Differential area element used for integration.
 
+        self.linear_solver : str
+            Type of linear solver selected ("direct" or "ilu").
+
+        self.linear_solver_options : dict
+            Configuration options passed to the linear solver.
+
         self.linear_GS_solver
-            Multigrid solver for linearised GS equation.
+            Linearised GS equation solver.
 
         self.greenfunc
             Boundary response Green's function matrix for source points inside
@@ -172,6 +190,11 @@ class NKGSsolver:
             raise ValueError("gs_operator_order must be either 2 or 4")
         self.gs_operator_order = gs_operator_order
 
+        if linear_solver not in ("direct", "ilu"):
+            raise ValueError("linear_solver must be either 'direct' or 'ilu'")
+        self.linear_solver = linear_solver
+        self.linear_solver_options = linear_solver_options or {}
+
         # nonlinear solver backend
         self.nksolver = nk_solver.nksolver(
             problem_dimension=self.nx * self.ny,
@@ -180,14 +203,14 @@ class NKGSsolver:
         )
 
         # linear GS solver used inside nonlinear iteration
-        self.linear_GS_solver = freegs4e.multigrid.createVcycle(
-            nx,
-            ny,
-            gs_operator(eq.R[0, 0], eq.R[-1, 0], eq.Z[0, 0], eq.Z[0, -1]),
-            nlevels=1,
-            ncycle=1,
-            niter=2,
-            direct=True,
+        gs_op_matrix = gs_operator(eq.R[0, 0], eq.R[-1, 0], eq.Z[0, 0], eq.Z[0, -1])(
+            nx, ny
+        )
+        self.linear_GS_solver = create_linear_gs_solver(
+            gs_op_matrix,
+            (nx, ny),
+            solver_type=self.linear_solver,
+            options=self.linear_solver_options,
         )
 
         # collect boundary grid indices for Dirichlet conditions
