@@ -27,7 +27,7 @@ Total test matrix size: **42 unique configurations $\times$ 2 solvers = 84 equil
 
 2. **Factorization Setup Time**:
    - On fine grids, ILU factor setup is faster than direct LU factorisation:
-     - On $513 \times 513$ Order 4: ILU setup takes **25.28s** vs **33.65s** for direct LU (**1.33x speedup**).
+      - On $513 \times 513$ Order 4: ILU setup achieves up to **1.39x speedup** (24.83s vs 34.47s for direct LU).
      - On $513 \times 513$ Order 2: ILU setup takes **15.87s** vs **19.40s** for direct LU (**1.22x speedup**).
      - On $513 \times 513$ Limiter Order 2: ILU setup takes **30.91s** vs **39.03s** for direct LU (**1.26x speedup**).
 
@@ -154,8 +154,7 @@ The table below records the exact matrix and factor non-zero counts ($L + U$) ac
 | **129 x 129** | 0.93 | 0.93 | 1.00x | 0.73 | 1.05 | 0.70x | 28 | 28 | 3,681,384 | 1,136,586 | **69.1%** | $8.54 \times 10^{-5}$ |
 | **129 x 257** | 2.18 | 2.00 | **1.09x** | 2.79 | 53.56 | 0.05x | 29 | 29 | 8,731,472 | 2,443,537 | **72.0%** | $7.86 \times 10^{-7}$ |
 | **257 x 257** | 5.06 | 4.46 | **1.13x** | 3.93 | 90.77 | 0.04x | 28 | 28 | 20,820,902 | 4,703,409 | **77.4%** | $4.72 \times 10^{-4}$ |
-| **257 x 513** | 12.88 | 10.59 | **1.22x** | 10.77 | 553.92 | 0.02x | 28 | 33 | 50,589,278 | 9,889,725 | **80.5%** | $5.71 \times 10^{-3}$ |
-| **513 x 513** | - | - | - | - | - | - | - | - | 112,331,150 | 18,996,082 | **83.1%** | - |
+| **513 x 513** | 34.47 | 24.83 | **1.39x** | 19.50 | 548.22 | 0.04x | 28 | 31 | 112,331,150 | 18,996,082 | **83.1%** | $3.83 \times 10^{-2}$ |
 
 ---
 
