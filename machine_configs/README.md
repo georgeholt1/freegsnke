@@ -9,3 +9,4 @@ Here we store a number of **machine description** files in pickle format that de
 | MAST-U | A **MAST-U-like** tokamak. | UKAEA
 | SPARC | A **SPARC-U-like** tokamak. | [SPARCPublic](https://github.com/cfs-energy/SPARCPublic)
 | ITER | An **ITER-like** tokamak. | [FUSE.jl](https://github.com/ProjectTorreyPines/FUSE.jl)
+| OpenSTEP | A **STEP-like** tokamak. | [OpenSTEP](https://github.com/ukaea/OpenSTEP)
