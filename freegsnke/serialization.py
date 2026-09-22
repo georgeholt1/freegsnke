@@ -183,8 +183,13 @@ def load_machine_file(
             _convert_probes_arrays(data)
         return data, "data"
 
-    path_str = str(path_or_data)
+    path = pathlib.Path(path_or_data)
+    if not path.is_file():
+        raise FileNotFoundError(f"Machine file not found: {path}")
+
+    path_str = str(path)
     is_pickle = any(path_str.endswith(ext) for ext in LEGACY_PICKLE_EXTENSIONS)
+    is_json = path_str.endswith(".json")
 
     if is_pickle:
         warnings.warn(
@@ -196,9 +201,14 @@ def load_machine_file(
         with open(path_str, "rb") as f:
             data = pickle.load(f)
         source_type = "pickle"
-    else:
+    elif is_json:
         data = load_json(path_str)
         source_type = "json"
+    else:
+        raise ValueError(
+            f"Unrecognized machine file format for '{path_str}'. "
+            "Expected .json or legacy pickle (.pickle, .pk, .pkl)."
+        )
 
     # If loading from a unified machine bundle, extract the component if needed
     if component_name is not None and isinstance(data, dict):

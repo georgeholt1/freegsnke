@@ -866,11 +866,11 @@ class Equilibrium(freegs4e.equilibrium.Equilibrium):
                 rdim = gdata["rdim"]
                 zdim = gdata["zdim"]
                 rleft = gdata["rleft"]
-                zmin = gdata["zmin"]
+                zmid = gdata["zmid"]
                 Rmin = rleft
                 Rmax = rleft + rdim
-                Zmin = zmin
-                Zmax = zmin + zdim
+                Zmin = zmid - 0.5 * zdim
+                Zmax = zmid + 0.5 * zdim
                 total_psi = np.asarray(gdata["psi"])
             except Exception as e:
                 raise ValueError(
