@@ -24,9 +24,12 @@ along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 import math
 import os
 import pickle
+import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
+
+from .serialization import load_machine_file, save_json
 import pyuda
 import scipy as sp
 import shapely as sh
@@ -45,13 +48,13 @@ def get_machine_data(
     split_passives=True,
 ):
     """
-    This functions builds the active coil, passive structure, wall, and limiter machine description pickle
+    This function builds the active coil, passive structure, wall, and limiter machine description JSON
     files for MAST-U (for a given shot number).
 
     Parameters
     ----------
     save_path : str
-        Path in which to save the machine pickle files.
+        Path in which to save the machine JSON files.
     shot : int
         MAST-U shot number.
     split_passives : bool
@@ -60,7 +63,7 @@ def get_machine_data(
     Returns
     -------
     None
-        Builds pickle files for the machine description in the 'machine_configs/MAST-U' directory.
+        Builds JSON files for the machine description in the 'machine_configs/MAST-U' directory.
     """
 
     if save_path is None:
@@ -468,9 +471,9 @@ def get_machine_data(
     active_coils["p6"]["1"] = p6_upper
     active_coils["p6"]["2"] = p6_lower
 
-    # save data: this pickle file can be used when a symmetric MAST-U machine
+    # save data: this JSON file can be used when a symmetric MAST-U machine
     # description is required.
-    pickle.dump(active_coils, open(f"{save_path}/MAST-U_active_coils.pickle", "wb"))
+    save_json(active_coils, f"{save_path}/MAST-U_active_coils.json")
 
     # define non-symmetric active coils dictionary
     active_coils_nonsym = {}
@@ -533,11 +536,11 @@ def get_machine_data(
     active_coils_nonsym["p6_lower"]["1"] = p6_lower
     active_coils_nonsym["p6_lower"]["1"]["polarity"] = 1
 
-    # save data: this pickle file can be used when a non-symmetric MAST-U machine
+    # save data: this JSON file can be used when a non-symmetric MAST-U machine
     # description is required.
-    pickle.dump(
+    save_json(
         active_coils_nonsym,
-        open(f"{save_path}/MAST-U_active_coils_nonsym.pickle", "wb"),
+        f"{save_path}/MAST-U_active_coils_nonsym.json",
     )
 
     # ------------
@@ -550,10 +553,10 @@ def get_machine_data(
         limiter.append({"R": limiter_uda["r"][i], "Z": limiter_uda["z"][i]})
 
     # save
-    pickle.dump(limiter, open(f"{save_path}/MAST-U_limiter.pickle", "wb"))
+    save_json(limiter, f"{save_path}/MAST-U_limiter.json")
 
     # save: here we set the wall to be the same as the MAST-U limiter.
-    pickle.dump(limiter, open(f"{save_path}/MAST-U_wall.pickle", "wb"))
+    save_json(limiter, f"{save_path}/MAST-U_wall.json")
 
     # ------------
     # PASSIVE STRUCTURES
@@ -697,9 +700,9 @@ def get_machine_data(
                         )
 
     # save data
-    pickle.dump(
+    save_json(
         passive_coils,
-        open(f"{save_path}/MAST-U_passive_coils.pickle", "wb"),
+        f"{save_path}/MAST-U_passive_coils.json",
     )
 
     # ------------
@@ -741,13 +744,70 @@ def get_machine_data(
         )
 
     # save
-    pickle.dump(
-        {"flux_loops": flux_loops, "pickups": pickups},
-        open(f"{save_path}/MAST-U_magnetic_probes.pickle", "wb"),
+    probes_data = {"flux_loops": flux_loops, "pickups": pickups}
+    save_json(
+        probes_data,
+        f"{save_path}/MAST-U_magnetic_probes.json",
     )
 
+    # save unified machine bundle
+    machine_bundle = {
+        "active_coils": active_coils,
+        "passive_coils": passive_coils,
+        "limiter": limiter,
+        "wall": limiter,
+        "magnetic_probes": probes_data,
+    }
+    save_json(machine_bundle, f"{save_path}/machine.json")
+
     # DONE
-    print("MAST-U geometry data successfully extracted and pickle files built.")
+    print("MAST-U geometry data successfully extracted and JSON files built.")
+
+
+def build_MASTU_geometry_files(
+    save_path="machine_configs/MAST-U", shot=45425, split_passives=True
+):
+    """
+    Extract MAST-U geometry data from pyUDA and save JSON machine description files.
+
+    Parameters
+    ----------
+    save_path : str, optional
+        Directory in which to save JSON geometry files. Defaults to 'machine_configs/MAST-U'.
+    shot : int, optional
+        MAST-U shot number. Defaults to 45425.
+    split_passives : bool, optional
+        Whether to model passive structures as parallelograms. Defaults to True.
+    """
+    return get_machine_data(
+        save_path=save_path, shot=shot, split_passives=split_passives
+    )
+
+
+def build_MASTU_geometry_pickle_files(
+    save_path="machine_configs/MAST-U", shot=45425, split_passives=True
+):
+    """
+    Deprecated alias for :func:`build_MASTU_geometry_files`.
+
+    Parameters
+    ----------
+    save_path : str, optional
+        Directory in which to save machine geometry files.
+    shot : int, optional
+        MAST-U shot number.
+    split_passives : bool, optional
+        Whether to model passive structures as parallelograms.
+    """
+    warnings.warn(
+        "build_MASTU_geometry_pickle_files is deprecated and will be removed in a "
+        "future release. Use build_MASTU_geometry_files instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return build_MASTU_geometry_files(
+        save_path=save_path, shot=shot, split_passives=split_passives
+    )
 
 
 def load_efit_times_and_status(client, shot=45425):
@@ -816,9 +876,9 @@ def load_static_solver_inputs(
     client :
         The pyUDA client.
     active_coils_path : str
-        Path to active coils pickle.
+        Path to active coils JSON (or legacy pickle).
     passive_coils_path : str
-        Path to passive coils pickle.
+        Path to passive coils JSON (or legacy pickle).
     shot : int
         MAST-U shot number.
     zero_passives : bool
@@ -887,8 +947,9 @@ def load_static_solver_inputs(
     currents_nonsym = {}
     currents_discrepancy = {}
 
-    with open(active_coils_path, "rb") as file:
-        active_coils = pickle.load(file)
+    active_coils, _ = load_machine_file(
+        active_coils_path, component_name="active_coils"
+    )
 
     efit_names = current_labels[0:24]  # active coil names in efit
 
@@ -927,8 +988,9 @@ def load_static_solver_inputs(
                 currents[active_coil_name] = None
 
     # passive structures
-    with open(passive_coils_path, "rb") as file:
-        passive_coils = pickle.load(file)
+    passive_coils, _ = load_machine_file(
+        passive_coils_path, component_name="passive_coils"
+    )
 
     # Passive structures
     for i in range(0, len(passive_coils)):
@@ -991,9 +1053,9 @@ def load_static_solver_inputs_splines(
     client :
         The pyUDA client.
     active_coils_path : str
-        Path to active coils pickle.
+        Path to active coils JSON (or legacy pickle).
     passive_coils_path : str
-        Path to passive coils pickle.
+        Path to passive coils JSON (or legacy pickle).
     shot : int
         MAST-U shot number.
     zero_passives : bool
@@ -1091,8 +1153,9 @@ def load_static_solver_inputs_splines(
     currents_nonsym = {}
     currents_discrepancy = {}
 
-    with open(active_coils_path, "rb") as file:
-        active_coils = pickle.load(file)
+    active_coils, _ = load_machine_file(
+        active_coils_path, component_name="active_coils"
+    )
 
     efit_names = current_labels[0:24]  # active coil names in efit
 
@@ -1131,8 +1194,9 @@ def load_static_solver_inputs_splines(
                 currents[active_coil_name] = None
 
     # passive structures
-    with open(passive_coils_path, "rb") as file:
-        passive_coils = pickle.load(file)
+    passive_coils, _ = load_machine_file(
+        passive_coils_path, component_name="passive_coils"
+    )
 
     # Passive structures
     for i in range(0, len(passive_coils)):
