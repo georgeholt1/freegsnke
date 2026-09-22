@@ -39,6 +39,7 @@ from .machine_update import Machine
 from .magnetic_probes import Probes
 from .passive_structure import PassiveStructure
 from .refine_passive import generate_refinement
+from .serialization import load_machine_bundle, load_machine_file
 
 
 def tokamak(
@@ -52,12 +53,14 @@ def tokamak(
     limiter_path=None,
     wall_path=None,
     magnetic_probe_path=None,
+    machine_path=None,
     refine_mode="G",
 ):
     """
     Load the standarised input data required to build the tokamak machine.
 
-    These dictionaries/lists/arrays can either be provided directly or loaded from pickle files.
+    These dictionaries/lists/arrays can either be provided directly, loaded from
+    JSON files (individual or a unified bundle), or loaded from legacy pickle files.
 
     At minimum, the tokamak requires active coil data and a limiter (to contain the plasma). The passives,
     the wall, and the magnetic probes are optional.
@@ -75,15 +78,18 @@ def tokamak(
     magnetic_probe_data : dict, optional
         Dictionary containing the magnetic probes data.
     active_coils_path : str, optional
-        Path to the pickle file containing the active coil data.
+        Path to the JSON (or legacy pickle) file containing active coil data.
     passive_coils_path : str, optional
-        Path to the pickle file containing the passive structure data.
+        Path to the JSON (or legacy pickle) file containing passive structure data.
     limiter_path : str, optional
-        Path to the pickle file containing the limiter data.
+        Path to the JSON (or legacy pickle) file containing limiter data.
     wall_path : str, optional
-        Path to the pickle file containing the wall data.
+        Path to the JSON (or legacy pickle) file containing wall data.
     magnetic_probe_path : str, optional
-        Path to the pickle file containing the magnetic probe data.
+        Path to the JSON (or legacy pickle) file containing magnetic probe data.
+    machine_path : str, optional
+        Path to a unified JSON file (e.g. ``machine.json``) or directory
+        containing machine configuration files.
     refine_mode : str, optional
         Choose the refinement mode for extended passive structures (input as polygons), by default
         'G' for 'grid' (use 'LH' for alternative mode using a Latin Hypercube implementation).
@@ -105,6 +111,7 @@ def tokamak(
         limiter_path=limiter_path,
         wall_path=wall_path,
         magnetic_probe_path=magnetic_probe_path,
+        machine_path=machine_path,
         refine_mode=refine_mode,
     )
 
@@ -132,17 +139,20 @@ def build_tokamak_components(
     limiter_path=None,
     wall_path=None,
     magnetic_probe_path=None,
+    machine_path=None,
     refine_mode="G",
 ):
     """
     Build the reusable pieces of a FreeGSNKE machine description.
 
     This is shared by initial tokamak construction and in-place machine updates,
-    so direct dictionaries and pickle-backed descriptions are handled identically.
+    so direct dictionaries, JSON files, and legacy pickle-backed descriptions
+    are handled identically.
 
     At minimum, active coil data and limiter data must be provided, either as
-    dictionaries/lists or as pickle paths. Passive structures, wall, and magnetic
-    probes are optional and follow the same defaults as :func:`tokamak`.
+    dictionaries/lists, JSON/pickle paths, or via ``machine_path``. Passive
+    structures, wall, and magnetic probes are optional and follow the same
+    defaults as :func:`tokamak`.
 
     Parameters
     ----------
@@ -158,15 +168,18 @@ def build_tokamak_components(
     magnetic_probe_data : dict, optional
         Dictionary containing magnetic probe descriptions.
     active_coils_path : str, optional
-        Path to a pickle file containing the active coil description.
+        Path to a JSON (or legacy pickle) file containing active coil data.
     passive_coils_path : str, optional
-        Path to a pickle file containing passive structure descriptions.
+        Path to a JSON (or legacy pickle) file containing passive structure data.
     limiter_path : str, optional
-        Path to a pickle file containing limiter boundary points.
+        Path to a JSON (or legacy pickle) file containing limiter boundary points.
     wall_path : str, optional
-        Path to a pickle file containing wall boundary points.
+        Path to a JSON (or legacy pickle) file containing wall boundary points.
     magnetic_probe_path : str, optional
-        Path to a pickle file containing magnetic probe descriptions.
+        Path to a JSON (or legacy pickle) file containing magnetic probe descriptions.
+    machine_path : str, optional
+        Path to a unified JSON file (e.g. ``machine.json``) or directory
+        containing machine configuration files.
     refine_mode : str, optional
         Refinement mode for extended passive structures. Defaults to ``"G"``.
 
@@ -177,6 +190,19 @@ def build_tokamak_components(
         FreeGSNKE coil metadata, coil counts, and the probe object needed to
         initialise or update a :class:`freegsnke.machine_update.Machine`.
     """
+
+    if machine_path is not None:
+        bundle = load_machine_bundle(machine_path)
+        if active_coils_data is None and active_coils_path is None:
+            active_coils_data = bundle.get("active_coils")
+        if passive_coils_data is None and passive_coils_path is None:
+            passive_coils_data = bundle.get("passive_coils")
+        if limiter_data is None and limiter_path is None:
+            limiter_data = bundle.get("limiter")
+        if wall_data is None and wall_path is None:
+            wall_data = bundle.get("wall")
+        if magnetic_probe_data is None and magnetic_probe_path is None:
+            magnetic_probe_data = bundle.get("magnetic_probes")
 
     # check data can be loaded correctly
     active_coils, passive_coils, limiter, wall = load_data_dicts(
@@ -1264,11 +1290,13 @@ def load_data_dicts(
     passive_coils_path=None,
     limiter_path=None,
     wall_path=None,
+    machine_path=None,
 ):
     """
     Load the standarised input data required to build the tokamak machine.
 
-    These dictionaries/lists/arrays can either be provided directly or loaded from pickle files.
+    These dictionaries/lists/arrays can either be provided directly, loaded from
+    JSON files (individual or unified bundle), or loaded from legacy pickle files.
 
     Parameters
     ----------
@@ -1281,13 +1309,15 @@ def load_data_dicts(
     wall_data : dict, optional
         Dictionary containing the wall data.
     active_coils_path : str, optional
-        Path to the pickle file containing the active coil data.
+        Path to the JSON or pickle file containing the active coil data.
     passive_coils_path : str, optional
-        Path to the pickle file containing the passive structure data.
+        Path to the JSON or pickle file containing the passive structure data.
     limiter_path : str, optional
-        Path to the pickle file containing the limiter data.
+        Path to the JSON or pickle file containing the limiter data.
     wall_path : str, optional
-        Path to the pickle file containing the wall data.
+        Path to the JSON or pickle file containing the wall data.
+    machine_path : str, optional
+        Path to a unified JSON file or directory containing machine configuration.
 
     Returns
     -------
@@ -1301,6 +1331,17 @@ def load_data_dicts(
         Dictionary containing the wall data.
     """
 
+    if machine_path is not None:
+        bundle = load_machine_bundle(machine_path)
+        if active_coils_data is None and active_coils_path is None:
+            active_coils_data = bundle.get("active_coils")
+        if passive_coils_data is None and passive_coils_path is None:
+            passive_coils_data = bundle.get("passive_coils")
+        if limiter_data is None and limiter_path is None:
+            limiter_data = bundle.get("limiter")
+        if wall_data is None and wall_path is None:
+            wall_data = bundle.get("wall")
+
     # actives required
     if active_coils_data is not None and active_coils_path is not None:
         raise ValueError(
@@ -1311,9 +1352,13 @@ def load_data_dicts(
             "The user needs to provide either 'active_coils_data' or 'active_coils_path'."
         )
     elif active_coils_path is not None:
-        with open(active_coils_path, "rb") as f:
-            active_coils_data = pickle.load(f)
-            print("Active coils --> built from pickle file.")
+        active_coils_data, source = load_machine_file(
+            active_coils_path, component_name="active_coils"
+        )
+        if source == "pickle":
+            print("Active coils --> built from pickle file (deprecated).")
+        else:
+            print("Active coils --> built from JSON file.")
     else:
         print("Active coils --> built from user-provided data.")
 
@@ -1326,11 +1371,18 @@ def load_data_dicts(
         passive_coils_data = []  # default to empty list
         print("Passive structures --> none provided.")
     elif passive_coils_path is not None:
-        with open(passive_coils_path, "rb") as f:
-            passive_coils_data = pickle.load(f)
-            print("Passive structures --> built from pickle file.")
+        passive_coils_data, source = load_machine_file(
+            passive_coils_path, component_name="passive_coils"
+        )
+        if source == "pickle":
+            print("Passive structures --> built from pickle file (deprecated).")
+        else:
+            print("Passive structures --> built from JSON file.")
     else:
-        print("Passive structures --> built from user-provided data.")
+        if len(passive_coils_data) == 0:
+            print("Passive structures --> none provided.")
+        else:
+            print("Passive structures --> built from user-provided data.")
 
     # limiter required
     if limiter_data is not None and limiter_path is not None:
@@ -1342,9 +1394,13 @@ def load_data_dicts(
             "The user needs to provide either 'limiter_data' or 'limiter_path'."
         )
     elif limiter_path is not None:
-        with open(limiter_path, "rb") as f:
-            limiter_data = pickle.load(f)
-            print("Limiter --> built from pickle file.")
+        limiter_data, source = load_machine_file(
+            limiter_path, component_name="limiter"
+        )
+        if source == "pickle":
+            print("Limiter --> built from pickle file (deprecated).")
+        else:
+            print("Limiter --> built from JSON file.")
     else:
         print("Limiter --> built from user-provided data.")
 
@@ -1357,11 +1413,17 @@ def load_data_dicts(
         wall_data = limiter_data  # default to the limiter
         print("Wall --> none provided, setting equal to limiter.")
     elif wall_path is not None:
-        with open(wall_path, "rb") as f:
-            wall_data = pickle.load(f)
-            print("Wall --> built from pickle file.")
+        wall_data, source = load_machine_file(
+            wall_path, component_name="wall"
+        )
+        if source == "pickle":
+            print("Wall --> built from pickle file (deprecated).")
+        else:
+            print("Wall --> built from JSON file.")
     else:
         print("Wall --> built from user-provided data.")
+
+    return active_coils_data, passive_coils_data, limiter_data, wall_data
 
     return active_coils_data, passive_coils_data, limiter_data, wall_data
 

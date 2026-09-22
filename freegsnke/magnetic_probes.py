@@ -28,6 +28,8 @@ import numpy as np
 from deepdiff import DeepDiff
 from freegs4e.gradshafranov import Greens, GreensBr, GreensBz
 
+from .serialization import _convert_probes_arrays, load_machine_file
+
 
 class Probes:
     """
@@ -88,8 +90,8 @@ class Probes:
     def __init__(
         self,
         coils_dict,
-        magnetic_probe_data,
-        magnetic_probe_path,
+        magnetic_probe_data=None,
+        magnetic_probe_path=None,
     ):
         """
         Sets up the magnetic probes object if the required data is passed to it via
@@ -99,10 +101,10 @@ class Probes:
         ----------
         coils_dict : dict
             Dictionary containing the active coil data.
-        magnetic_probe_data : dict
+        magnetic_probe_data : dict, optional
             Dictionary containing the magnetic probes data.
-        magnetic_probe_path : str
-            Path to the pickle file containing the magnetic probe data.
+        magnetic_probe_path : str, optional
+            Path to the JSON (or legacy pickle) file containing the magnetic probe data.
 
         """
 
@@ -115,11 +117,17 @@ class Probes:
             print("Magnetic probes --> none provided.")
         else:
             if magnetic_probe_path is not None:
-                with open(magnetic_probe_path, "rb") as f:
-                    magnetic_probe_data = pickle.load(f)
-                print("Magnetic probes --> built from pickle file.")
+                magnetic_probe_data, source = load_machine_file(
+                    magnetic_probe_path, component_name="magnetic_probes"
+                )
+                if source == "pickle":
+                    print("Magnetic probes --> built from pickle file (deprecated).")
+                else:
+                    print("Magnetic probes --> built from JSON file.")
             else:
                 print("Magnetic probes --> built from user-provided data.")
+                if isinstance(magnetic_probe_data, dict):
+                    _convert_probes_arrays(magnetic_probe_data)
 
             self.floops = magnetic_probe_data["flux_loops"]
             self.pickups = magnetic_probe_data["pickups"]
