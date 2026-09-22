@@ -1,5 +1,4 @@
 import os
-import pickle
 import tempfile
 from copy import deepcopy
 from pathlib import Path
@@ -12,6 +11,7 @@ os.environ.setdefault(
 )
 
 from freegsnke import build_machine
+from freegsnke.serialization import load_json
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MACHINE_CONFIG_DIR = REPO_ROOT / "machine_configs" / "example"
@@ -37,19 +37,19 @@ EXPECTED_COILS_LIST = [
 
 @pytest.fixture()
 def example_paths():
-    """Return pickle paths for the example00 machine configuration."""
+    """Return JSON paths for the example00 machine configuration."""
     return {
-        "active_coils_path": str(MACHINE_CONFIG_DIR / "active_coils.pickle"),
-        "passive_coils_path": str(MACHINE_CONFIG_DIR / "passive_coils.pickle"),
-        "limiter_path": str(MACHINE_CONFIG_DIR / "limiter.pickle"),
-        "wall_path": str(MACHINE_CONFIG_DIR / "wall.pickle"),
-        "magnetic_probe_path": str(MACHINE_CONFIG_DIR / "magnetic_probes.pickle"),
+        "active_coils_path": str(MACHINE_CONFIG_DIR / "active_coils.json"),
+        "passive_coils_path": str(MACHINE_CONFIG_DIR / "passive_coils.json"),
+        "limiter_path": str(MACHINE_CONFIG_DIR / "limiter.json"),
+        "wall_path": str(MACHINE_CONFIG_DIR / "wall.json"),
+        "magnetic_probe_path": str(MACHINE_CONFIG_DIR / "magnetic_probes.json"),
     }
 
 
 @pytest.fixture()
 def example_data():
-    """Load the example00 machine configuration pickle data."""
+    """Load the example00 machine configuration JSON data."""
     data = {}
     for name in [
         "active_coils",
@@ -58,14 +58,13 @@ def example_data():
         "wall",
         "magnetic_probes",
     ]:
-        with (MACHINE_CONFIG_DIR / f"{name}.pickle").open("rb") as f:
-            data[name] = pickle.load(f)
+        data[name] = load_json(MACHINE_CONFIG_DIR / f"{name}.json")
     return data
 
 
 @pytest.fixture()
 def example_tokamak(example_paths):
-    """Build the example00 tokamak from pickle paths."""
+    """Build the example00 tokamak from JSON paths."""
     return build_machine.tokamak(**example_paths)
 
 

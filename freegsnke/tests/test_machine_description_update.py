@@ -1,36 +1,33 @@
 import copy
-import pickle
 
 import numpy as np
 import pytest
 
 from freegsnke import build_machine, equilibrium_update
+from freegsnke.serialization import _convert_probes_arrays, load_json
 
 MACHINE_CONFIG_PATH = "./machine_configs/test"
 
 
 def _load_machine_description():
-    with open(f"{MACHINE_CONFIG_PATH}/active_coils.pickle", "rb") as f:
-        active_coils = pickle.load(f)
-    with open(f"{MACHINE_CONFIG_PATH}/passive_coils.pickle", "rb") as f:
-        passive_coils = pickle.load(f)
-    with open(f"{MACHINE_CONFIG_PATH}/limiter.pickle", "rb") as f:
-        limiter = pickle.load(f)
-    with open(f"{MACHINE_CONFIG_PATH}/wall.pickle", "rb") as f:
-        wall = pickle.load(f)
-    with open(f"{MACHINE_CONFIG_PATH}/magnetic_probes.pickle", "rb") as f:
-        magnetic_probes = pickle.load(f)
+    active_coils = load_json(f"{MACHINE_CONFIG_PATH}/active_coils.json")
+    passive_coils = load_json(f"{MACHINE_CONFIG_PATH}/passive_coils.json")
+    limiter = load_json(f"{MACHINE_CONFIG_PATH}/limiter.json")
+    wall = load_json(f"{MACHINE_CONFIG_PATH}/wall.json")
+    magnetic_probes = _convert_probes_arrays(
+        load_json(f"{MACHINE_CONFIG_PATH}/magnetic_probes.json")
+    )
 
     return active_coils, passive_coils, limiter, wall, magnetic_probes
 
 
 def _build_tokamak_from_paths():
     return build_machine.tokamak(
-        active_coils_path=f"{MACHINE_CONFIG_PATH}/active_coils.pickle",
-        passive_coils_path=f"{MACHINE_CONFIG_PATH}/passive_coils.pickle",
-        limiter_path=f"{MACHINE_CONFIG_PATH}/limiter.pickle",
-        wall_path=f"{MACHINE_CONFIG_PATH}/wall.pickle",
-        magnetic_probe_path=f"{MACHINE_CONFIG_PATH}/magnetic_probes.pickle",
+        active_coils_path=f"{MACHINE_CONFIG_PATH}/active_coils.json",
+        passive_coils_path=f"{MACHINE_CONFIG_PATH}/passive_coils.json",
+        limiter_path=f"{MACHINE_CONFIG_PATH}/limiter.json",
+        wall_path=f"{MACHINE_CONFIG_PATH}/wall.json",
+        magnetic_probe_path=f"{MACHINE_CONFIG_PATH}/magnetic_probes.json",
     )
 
 
@@ -44,7 +41,7 @@ def _build_tokamak_from_data(active_coils, passive_coils, limiter, wall, probes)
     )
 
 
-def test_direct_machine_description_matches_pickle_inputs():
+def test_direct_machine_description_matches_json_inputs():
     active_coils, passive_coils, limiter, wall, probes = _load_machine_description()
 
     np.random.seed(1)

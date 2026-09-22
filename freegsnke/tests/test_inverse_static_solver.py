@@ -26,10 +26,10 @@ def _build_diverted_inverse_case():
     coils.
     """
     tokamak = build_machine.tokamak(
-        active_coils_path=str(MACHINE_CONFIG_DIR / "MAST-U_like_active_coils.pickle"),
-        passive_coils_path=str(MACHINE_CONFIG_DIR / "MAST-U_like_passive_coils.pickle"),
-        limiter_path=str(MACHINE_CONFIG_DIR / "MAST-U_like_limiter.pickle"),
-        wall_path=str(MACHINE_CONFIG_DIR / "MAST-U_like_wall.pickle"),
+        active_coils_path=str(MACHINE_CONFIG_DIR / "MAST-U_like_active_coils.json"),
+        passive_coils_path=str(MACHINE_CONFIG_DIR / "MAST-U_like_passive_coils.json"),
+        limiter_path=str(MACHINE_CONFIG_DIR / "MAST-U_like_limiter.json"),
+        wall_path=str(MACHINE_CONFIG_DIR / "MAST-U_like_wall.json"),
     )
 
     eq = equilibrium_update.Equilibrium(

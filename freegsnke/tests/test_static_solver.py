@@ -33,11 +33,11 @@ def create_machine():
 
     # build machine
     tokamak = build_machine.tokamak(
-        active_coils_path=str(MACHINE_CONFIG_DIR / "active_coils.pickle"),
-        passive_coils_path=str(MACHINE_CONFIG_DIR / "passive_coils.pickle"),
-        limiter_path=str(MACHINE_CONFIG_DIR / "limiter.pickle"),
-        wall_path=str(MACHINE_CONFIG_DIR / "wall.pickle"),
-        magnetic_probe_path=str(MACHINE_CONFIG_DIR / "magnetic_probes.pickle"),
+        active_coils_path=str(MACHINE_CONFIG_DIR / "active_coils.json"),
+        passive_coils_path=str(MACHINE_CONFIG_DIR / "passive_coils.json"),
+        limiter_path=str(MACHINE_CONFIG_DIR / "limiter.json"),
+        wall_path=str(MACHINE_CONFIG_DIR / "wall.json"),
+        magnetic_probe_path=str(MACHINE_CONFIG_DIR / "magnetic_probes.json"),
     )
 
     # Creates equilibrium object and initializes it with
