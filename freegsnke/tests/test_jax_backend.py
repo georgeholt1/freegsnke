@@ -143,3 +143,81 @@ def test_jax_inverse_static_solve():
     )
     assert len(opt) == 1
     assert len(xpt) >= 2
+
+
+def test_jax_batched_solver():
+    """Test batched equilibrium solving using JAX vectorization."""
+    from freegsnke.jax.batch_solver import BatchedEquilibriumSolver
+
+    tokamak = build_machine.tokamak(
+        active_coils_path=str(MACHINE_CONFIG_DIR / "active_coils.pickle"),
+        passive_coils_path=str(MACHINE_CONFIG_DIR / "passive_coils.pickle"),
+        limiter_path=str(MACHINE_CONFIG_DIR / "limiter.pickle"),
+        wall_path=str(MACHINE_CONFIG_DIR / "wall.pickle"),
+        magnetic_probe_path=str(MACHINE_CONFIG_DIR / "magnetic_probes.pickle"),
+    )
+    eq = equilibrium_update.Equilibrium(
+        tokamak=tokamak,
+        Rmin=0.1,
+        Rmax=2.0,
+        Zmin=-2.2,
+        Zmax=2.2,
+        nx=65,
+        ny=129,
+    )
+    eq.tokamak.set_coil_current("P6", 0)
+    eq.tokamak["P6"].control = False
+    eq.tokamak["Solenoid"].control = False
+    eq.tokamak.set_coil_current("Solenoid", 15000)
+
+    base_currents = np.load(STATIC_CURRENT_BASELINE)
+    eq.tokamak.setControlCurrents(base_currents)
+    eq.tokamak_psi = eq.tokamak.getPsitokamak(vgreen=eq._vgreen)
+
+    # Solve base equilibrium
+    profiles = ConstrainPaxisIp(eq, 8.1e3, 6.2e5, 0.5, alpha_m=1.8, alpha_n=1.2)
+    solver = GSstaticsolver.NKGSsolver(eq, backend="jax")
+    solver.forward_solve(eq, profiles, 1e-5)
+    base_plasma_psi = eq.plasma_psi.copy()
+    base_full_currents = eq.tokamak.current_vec.copy()
+
+    # Create batch of B=4 variations
+    B = 4
+    batch_currents = np.zeros((B, len(base_full_currents)))
+    for b in range(B):
+        batch_currents[b] = base_full_currents.copy()
+        batch_currents[b, 0] += (b - (B - 1) / 2.0) * 200.0
+
+    batch_solver = BatchedEquilibriumSolver(eq)
+    eq_list, prof_list, info = batch_solver.solve_batch(
+        batch_currents=batch_currents,
+        paxis=8.1e3,
+        Ip=6.2e5,
+        vacuum_ratio=0.5,
+        alpha_m=1.8,
+        alpha_n=1.2,
+        target_relative_tolerance=1e-4,
+        max_iterations=40,
+        relaxation=0.5,
+        initial_plasma_psi=base_plasma_psi,
+        verbose=False,
+    )
+
+    assert len(eq_list) == B
+    for eq_b in eq_list:
+        assert eq_b.solved
+        assert np.isfinite(eq_b.plasma_psi).all()
+
+    # Check accuracy vs single solve for middle item
+    mid_idx = B // 2
+    eq_single = eq.create_auxiliary_equilibrium()
+    eq_single.tokamak.current_vec = batch_currents[mid_idx].copy()
+    eq_single.tokamak_psi = eq_list[mid_idx].tokamak_psi.copy()
+    eq_single.plasma_psi = base_plasma_psi.copy()
+    prof_single = ConstrainPaxisIp(eq_single, 8.1e3, 6.2e5, 0.5, alpha_m=1.8, alpha_n=1.2)
+    solver.forward_solve(eq_single, prof_single, 1e-5)
+
+    rel_diff = np.max(np.abs(eq_single.plasma_psi - eq_list[mid_idx].plasma_psi)) / (
+        np.max(eq_single.plasma_psi) - np.min(eq_single.plasma_psi)
+    )
+    assert rel_diff < 5e-4, f"Batched solve discrepancy {rel_diff} exceeds tolerance"

@@ -7,6 +7,7 @@ numerical methods for plasma physics modelling.
 
 import importlib.metadata
 
+from .jax.batch_solver import BatchedEquilibriumSolver
 from .jax.config import get_backend, set_backend
 
 __version__ = importlib.metadata.version("freegsnke")
@@ -17,4 +18,5 @@ __all__ = [
     "__author__",
     "get_backend",
     "set_backend",
+    "BatchedEquilibriumSolver",
 ]

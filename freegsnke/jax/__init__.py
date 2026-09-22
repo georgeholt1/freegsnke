@@ -14,6 +14,7 @@ from .config import (
     is_jax_available,
     set_backend,
 )
+from .batch_solver import BatchedEquilibriumSolver
 from .linear_solver import JAXGSLinearEngine, JAXLinearGSSolver
 from .nk_solver import JAXNKSolver
 
@@ -26,4 +27,5 @@ __all__ = [
     "JAXLinearGSSolver",
     "JAXGSLinearEngine",
     "JAXNKSolver",
+    "BatchedEquilibriumSolver",
 ]
