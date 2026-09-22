@@ -7,7 +7,8 @@ Copyright 2025 UKAEA, UKRI-STFC, and The Authors, as per the COPYRIGHT and READM
 import logging
 import os
 
-logger = logging.getLogger("freegsnke.jax")
+# Configure memory allocation to avoid greedy preallocation of entire VRAM
+os.environ.setdefault("XLA_PYTHON_CLIENT_PREALLOCATE", "false")
 
 # Ensure 64-bit precision is enabled for physics calculations
 try:
