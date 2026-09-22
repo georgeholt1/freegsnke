@@ -436,22 +436,7 @@ class NKGSsolver:
                 self.Z,
                 (tokamak_psi + plasma_psi).reshape(self.nx, self.ny),
             )
-            psi_pred_jax, psi_bnd_jax = self.jax_engine.compute_gs_solution(self.jtor)
-            self.rhs = self.rhs_before_jtor * self.jtor
-            self.psi_boundary = np.zeros_like(self.R)
-            psi_bnd = np.asarray(psi_bnd_jax)
-            self.psi_boundary[:, 0] = psi_bnd[: self.nx]
-            self.psi_boundary[:, -1] = psi_bnd[self.nx : 2 * self.nx]
-            self.psi_boundary[0, 1 : self.ny - 1] = psi_bnd[
-                2 * self.nx : 2 * self.nx + self.ny - 2
-            ]
-            self.psi_boundary[-1, 1 : self.ny - 1] = psi_bnd[
-                2 * self.nx + self.ny - 2 :
-            ]
-            self.rhs[0, :] = self.psi_boundary[0, :]
-            self.rhs[:, 0] = self.psi_boundary[:, 0]
-            self.rhs[-1, :] = self.psi_boundary[-1, :]
-            self.rhs[:, -1] = self.psi_boundary[:, -1]
+            psi_pred_jax, _ = self.jax_engine.compute_gs_solution(self.jtor)
             return plasma_psi - np.asarray(psi_pred_jax)
 
         # ------------------------------------------------------------
