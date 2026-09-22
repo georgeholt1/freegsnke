@@ -9,7 +9,8 @@ This directory contains the machine configuration for the **OpenSTEP** spherical
 - `OpenSTEP_limiter.pickle`: Limiter boundary definition (identical to wall contour).
 - `OpenSTEP_passive_coils.pickle`: Passive structures (empty list, as static solves are current-specified).
 - `OpenSTEP_coil_currents.pickle` / `.json`: Reference equilibrium coil currents shipped with OpenSTEP.
-- `OpenSTEP_profiles.pickle`: Reference plasma current profile data (1D $p'(\psi_N)$ and $FF'(\psi_N)$, $I_p$, $\beta_p$, $f_{\text{vac}}$, $R_0$, $B_0$).
+- `OpenSTEP_profiles.pickle`: Reference plasma current profile data (1D $p'(\psi_N)$ and $FF'(\psi_N)$, $I_p$, $\beta_p$, $f_{\text{vac}}$, $R_0$, $B_0$, $R_{\text{axis}} = 1.0$).
+- `OpenSTEP_plasma_psi.pickle`: 2D reference plasma and total flux data ($\psi_{\text{plasma}}$, $\psi_{\text{tot}}$, $\psi_{\text{axis}} = 6.1109$ Wb/rad, $\psi_{\text{bndry}} = 1.6798$ Wb/rad) for initializing forward solves to the authentic diverted state.
 
 ## Reference Coil Currents (from EBCC Free-Boundary Equilibrium)
 
