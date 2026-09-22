@@ -1,0 +1,48 @@
+{
+  "flux_loops": [
+    {
+      "name": "fl_nu_01",
+      "position": [
+        0.901,
+        1.3582
+      ]
+    },
+    {
+      "name": "fl_nu_02",
+      "position": [
+        0.9544,
+        1.3041999
+      ]
+    }
+  ],
+  "pickups": [
+    {
+      "name": "b_c1_p01",
+      "position": [
+        0.2769,
+        300.0,
+        1.26203
+      ],
+      "orientation": "PARALLEL",
+      "orientation_vector": [
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "b_c1_t02",
+      "position": [
+        0.27689108,
+        299.9968,
+        1.2245095
+      ],
+      "orientation": "TOROIDAL",
+      "orientation_vector": [
+        0.0,
+        1.0,
+        0.0
+      ]
+    }
+  ]
+}
