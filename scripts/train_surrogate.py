@@ -107,6 +107,8 @@ def train_surrogate(
         feature_names=np.array(feature_names, dtype=str),
         grid_shape=np.array(grid_shape, dtype=int),
         n_modes=np.array([n_modes], dtype=int),
+        R_1D=data["R_1D"].astype(np.float64) if "R_1D" in data else np.linspace(0.1, 2.0, grid_shape[0]),
+        Z_1D=data["Z_1D"].astype(np.float64) if "Z_1D" in data else np.linspace(-2.2, 2.2, grid_shape[1]),
     )
 
     size_kb = out_path.stat().st_size / 1024

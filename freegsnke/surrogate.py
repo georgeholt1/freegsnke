@@ -62,6 +62,13 @@ class SurrogateInitialGuess:
         self.n_modes = int(data["n_modes"][0])
         self.model_path = model_path
 
+        if "R_1D" in data and "Z_1D" in data:
+            self.R_1D = np.array(data["R_1D"], dtype=np.float64)
+            self.Z_1D = np.array(data["Z_1D"], dtype=np.float64)
+        else:
+            self.R_1D = np.linspace(0.1, 2.0, self.grid_shape[0])
+            self.Z_1D = np.linspace(-2.2, 2.2, self.grid_shape[1])
+
     def extract_features(self, eq, profiles) -> np.ndarray:
         """
         Extract the input feature vector from an Equilibrium and Profile object.
@@ -121,9 +128,9 @@ class SurrogateInitialGuess:
         modes = np.dot(h2, self.weights_2) + self.bias_2
         return modes
 
-    def predict(self, eq, profiles) -> np.ndarray:
+    def predict_native(self, eq, profiles) -> np.ndarray:
         """
-        Predict the 2D initial plasma flux distribution.
+        Predict the 2D initial plasma flux distribution on the native training grid.
 
         Parameters
         ----------
@@ -144,6 +151,82 @@ class SurrogateInitialGuess:
         psi_flat = self.pca_mean + np.dot(modes, self.pca_components)
         psi_2d = psi_flat.reshape(self.grid_shape)
         return psi_2d
+
+    def interpolate_to_grid(
+        self,
+        psi_native: np.ndarray,
+        target_R: np.ndarray,
+        target_Z: np.ndarray,
+    ) -> np.ndarray:
+        """
+        Interpolate native flux prediction onto target (R, Z) coordinates.
+
+        Parameters
+        ----------
+        psi_native : np.ndarray
+            2D flux array on native training grid of shape `self.grid_shape`.
+        target_R : np.ndarray
+            1D array of target R coordinates.
+        target_Z : np.ndarray
+            1D array of target Z coordinates.
+
+        Returns
+        -------
+        np.ndarray
+            2D interpolated flux array of shape `(len(target_R), len(target_Z))`.
+        """
+        from scipy.interpolate import RectBivariateSpline
+
+        kx = min(3, len(self.R_1D) - 1, len(target_R) - 1)
+        ky = min(3, len(self.Z_1D) - 1, len(target_Z) - 1)
+        spline = RectBivariateSpline(self.R_1D, self.Z_1D, psi_native, kx=kx, ky=ky)
+        return spline(target_R, target_Z)
+
+    def predict(self, eq, profiles) -> np.ndarray:
+        """
+        Predict the 2D initial plasma flux distribution matching the target equilibrium grid.
+
+        If the target equilibrium's grid resolution or coordinates differ from the surrogate's
+        native training grid, the predicted flux is smoothly interpolated onto `(eq.R, eq.Z)`
+        using bicubic spline interpolation.
+
+        Parameters
+        ----------
+        eq : Equilibrium
+            FreeGSNKE equilibrium object.
+        profiles : Profile
+            FreeGSNKE profile object.
+
+        Returns
+        -------
+        np.ndarray
+            2D predicted plasma flux grid of shape `(eq.nx, eq.ny)`.
+        """
+        psi_native = self.predict_native(eq, profiles)
+
+        # Check target equilibrium grid shape and coordinates
+        target_nx = getattr(eq, "nx", psi_native.shape[0])
+        target_ny = getattr(eq, "ny", psi_native.shape[1])
+        target_shape = (target_nx, target_ny)
+
+        if target_shape == self.grid_shape:
+            if hasattr(eq, "R") and hasattr(eq, "Z"):
+                target_R = eq.R[:, 0]
+                target_Z = eq.Z[0, :]
+                if np.allclose(target_R, self.R_1D) and np.allclose(target_Z, self.Z_1D):
+                    return psi_native
+            else:
+                return psi_native
+
+        # Target grid differs in resolution or coordinate spacing: interpolate
+        if hasattr(eq, "R") and hasattr(eq, "Z"):
+            target_R = eq.R[:, 0]
+            target_Z = eq.Z[0, :]
+        else:
+            target_R = np.linspace(self.R_1D[0], self.R_1D[-1], target_nx)
+            target_Z = np.linspace(self.Z_1D[0], self.Z_1D[-1], target_ny)
+
+        return self.interpolate_to_grid(psi_native, target_R, target_Z)
 
     def apply(self, eq, profiles) -> np.ndarray:
         """
