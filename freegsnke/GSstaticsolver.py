@@ -26,6 +26,9 @@ import numpy as np
 from freegs4e.gradshafranov import Greens
 
 from . import nk_solver_H as nk_solver
+from .jax.config import get_backend
+from .jax.linear_solver import JAXGSLinearEngine
+from .jax.nk_solver import JAXNKSolver
 
 
 class NKGSsolver:
@@ -74,6 +77,7 @@ class NKGSsolver:
         collinearity_reg=1e-6,
         seed=42,
         gs_operator_order=4,
+        backend=None,
     ):
         """
         Initialise the Grad–Shafranov nonlinear solver.
@@ -117,16 +121,19 @@ class NKGSsolver:
             construction and factorisation costs when that accuracy trade-off
             is acceptable.
 
+        backend : {'numpy', 'jax'}, optional
+            Computational backend. If None, uses the globally configured default
+            (see freegsnke.set_backend, defaults to 'numpy'). When set to 'jax',
+            accelerates the linear GS solve, boundary Green evaluations, and
+            Newton-Krylov Arnoldi iterations using JAX on GPU/CPU.
+
         Attributes
         ----------
         self.R, self.Z : ndarray
-            Computational grid coordinates.
-
-        self.nx, self.ny : int
-            Grid dimensions.
+            Coordinates of domain grid points.
 
         self.dRdZ : float
-            Differential area element used for integration.
+            Grid cell area element.
 
         self.linear_GS_solver
             Multigrid solver for linearised GS equation.
@@ -172,23 +179,11 @@ class NKGSsolver:
             raise ValueError("gs_operator_order must be either 2 or 4")
         self.gs_operator_order = gs_operator_order
 
-        # nonlinear solver backend
-        self.nksolver = nk_solver.nksolver(
-            problem_dimension=self.nx * self.ny,
-            l2_reg=l2_reg,
-            collinearity_reg=collinearity_reg,
-        )
-
-        # linear GS solver used inside nonlinear iteration
-        self.linear_GS_solver = freegs4e.multigrid.createVcycle(
-            nx,
-            ny,
-            gs_operator(eq.R[0, 0], eq.R[-1, 0], eq.Z[0, 0], eq.Z[0, -1]),
-            nlevels=1,
-            ncycle=1,
-            niter=2,
-            direct=True,
-        )
+        if backend is None:
+            backend = get_backend()
+        self.backend = backend.lower()
+        if self.backend not in ("numpy", "jax"):
+            raise ValueError(f"Unknown backend '{backend}'. Choose 'numpy' or 'jax'.")
 
         # collect boundary grid indices for Dirichlet conditions
         bndry_indices = np.concatenate(
@@ -212,6 +207,52 @@ class NKGSsolver:
         # Comes from GS equation:
         # Δψ = - μ₀ R Jtor
         self.rhs_before_jtor = -freegs4e.gradshafranov.mu0 * eq.R
+
+        if self.backend == "jax":
+            self.nksolver = JAXNKSolver(
+                problem_dimension=self.nx * self.ny,
+                l2_reg=l2_reg,
+                collinearity_reg=collinearity_reg,
+            )
+            cache_key = (
+                self.nx,
+                self.ny,
+                float(eq.R[0, 0]),
+                float(eq.R[-1, 0]),
+                float(eq.Z[0, 0]),
+                float(eq.Z[0, -1]),
+                gs_operator_order,
+            )
+            op = gs_operator(eq.R[0, 0], eq.R[-1, 0], eq.Z[0, 0], eq.Z[0, -1])
+            A_sparse = op(nx, ny)
+            self.jax_engine = JAXGSLinearEngine(
+                A_sparse=A_sparse,
+                greenfunc=self.greenfunc,
+                plasma_source_mask=self.plasma_source_mask,
+                rhs_before_jtor=self.rhs_before_jtor,
+                nx=nx,
+                ny=ny,
+                cache_key=cache_key,
+            )
+            self.linear_GS_solver = self.jax_engine.linear_solver.solve
+        else:
+            # nonlinear solver backend
+            self.nksolver = nk_solver.nksolver(
+                problem_dimension=self.nx * self.ny,
+                l2_reg=l2_reg,
+                collinearity_reg=collinearity_reg,
+            )
+
+            # linear GS solver used inside nonlinear iteration
+            self.linear_GS_solver = freegs4e.multigrid.createVcycle(
+                nx,
+                ny,
+                gs_operator(eq.R[0, 0], eq.R[-1, 0], eq.Z[0, 0], eq.Z[0, -1]),
+                nlevels=1,
+                ncycle=1,
+                niter=2,
+                direct=True,
+            )
 
         # random generator used for NK search direction exploration
         self.rng = np.random.default_rng(seed=seed)
@@ -243,6 +284,10 @@ class NKGSsolver:
 
     def _boundary_flux_from_jtor(self, jtor):
         """Return boundary flux from plasma current inside the limiter."""
+        if getattr(self, "backend", "numpy") == "jax":
+            jtor_1d = np.asarray(jtor, dtype=float).ravel()
+            jtor_masked = jtor_1d[self.plasma_source_mask.reshape(-1)]
+            return np.asarray(self.jax_engine.greenfunc @ jtor_masked)
         return self.greenfunc @ jtor[self.plasma_source_mask]
 
     def freeboundary(self, plasma_psi, tokamak_psi, profiles):
@@ -257,56 +302,36 @@ class NKGSsolver:
 
         in free-boundary form.
 
-        The algorithm performs three main tasks:
-
-            (1) Compute toroidal current density:
-                    Jtor(ψ_total)
-
-            (2) Compute RHS source term for linear GS solve
-
-            (3) Compute boundary flux contributions using Green's functions
-
-        The total flux used is:
-
-            ψ_total = ψ_tokamak + ψ_plasma
-
         Parameters
         ----------
         plasma_psi : ndarray
             Flattened plasma poloidal flux vector.
-            Shape = (nx * ny,).
 
         tokamak_psi : ndarray
-            Vacuum flux contribution generated by:
-                • Active coils
-                • Passive structures
+            Vacuum poloidal flux from external coils and conducting structures.
+            Same flattened shape as plasma_psi.
 
-        profiles : FreeGSNKE profile object
-            Provides plasma current model Jtor(ψ).
+        profiles : freegsnke profile object
+            Profile model used to compute toroidal plasma current density.
+            Must implement:
+                profiles.Jtor(R, Z, psi_total)
 
-        Returns
-        -------
-        None
-            Updates internal solver state:
+        Internal outputs:
+        -----------------
+        self.jtor : ndarray
+            Computed toroidal current density field on the grid.
 
-                self.jtor
-                self.rhs
-                self.psi_boundary
+        self.rhs : ndarray
+            Right-hand side source field for the linear GS equation:
+                RHS = − μ₀ R Jtor
 
-        Notes
-        -----
-        • This method is called before solving the linearised GS equation.
-        • Boundary flux is computed using Green's function convolution.
+        self.psi_boundary : ndarray
+            Dirichlet boundary flux values imposed along computational boundary.
         """
 
         # ------------------------------------------------------------
-        # Compute toroidal current density profile
-        #
-        # Jtor = Jtor(ψ_total)
-        #
-        # This provides the nonlinear source term for GS equation:
-        #
-        #     Δψ = - μ₀ R Jtor
+        # Evaluate toroidal current density using current flux estimate
+        # Total flux = plasma flux + vacuum coil flux
         # ------------------------------------------------------------
         self.jtor = profiles.Jtor(
             self.R,
@@ -314,32 +339,37 @@ class NKGSsolver:
             (tokamak_psi + plasma_psi).reshape(self.nx, self.ny),
         )
 
-        # RHS source term for linear GS solve
-        # rhs_before_jtor already contains geometric operators
+        # ------------------------------------------------------------
+        # Assemble interior RHS term:
+        #
+        # From Grad–Shafranov equation:
+        #
+        #     Δψ = - μ₀ R Jtor
+        #
+        # rhs_before_jtor = - μ₀ R
+        # ------------------------------------------------------------
         self.rhs = self.rhs_before_jtor * self.jtor
 
         # ------------------------------------------------------------
-        # Compute boundary flux via Green's function convolution
+        # Compute boundary flux produced by plasma current:
         #
-        # psi_boundary = ∫ G(R,Z; R',Z') Jtor(R',Z') dR'dZ'
+        # Plasma current inside domain induces poloidal flux on
+        # computational boundary via Green's function convolution:
         #
-        # Implemented as a matrix-vector product over source points inside the
-        # limiter, outside which the plasma current is identically zero.
+        #     ψ_boundary = G_boundary @ Jtor
         # ------------------------------------------------------------
         self.psi_boundary = np.zeros_like(self.R)
         psi_bnd = self._boundary_flux_from_jtor(self.jtor)
 
-        # ------------------------------------------------------------
-        # Map flattened Green's solution back to boundary grid
-        # ------------------------------------------------------------
-        # Vertical boundaries
+        # unpack Green vector into boundary grid array
         self.psi_boundary[:, 0] = psi_bnd[: self.nx]
         self.psi_boundary[:, -1] = psi_bnd[self.nx : 2 * self.nx]
-        # Horizontal boundaries
         self.psi_boundary[0, 1 : self.ny - 1] = psi_bnd[
             2 * self.nx : 2 * self.nx + self.ny - 2
         ]
-        self.psi_boundary[-1, 1 : self.ny - 1] = psi_bnd[2 * self.nx + self.ny - 2 :]
+        self.psi_boundary[-1, 1 : self.ny - 1] = psi_bnd[
+            2 * self.nx + self.ny - 2 :
+        ]
 
         # ------------------------------------------------------------
         # Impose Dirichlet boundary conditions on RHS
@@ -350,7 +380,7 @@ class NKGSsolver:
         self.rhs[-1, :] = self.psi_boundary[-1, :]
         self.rhs[:, -1] = self.psi_boundary[:, -1]
 
-    def F_function(self, plasma_psi, tokamak_psi, profiles):
+    def F_function(self, plasma_psi, tokamak_psi=None, profiles=None):
         """
         Compute the nonlinear Grad–Shafranov residual written as a root-finding problem.
 
@@ -377,13 +407,13 @@ class NKGSsolver:
             Flattened plasma poloidal flux vector.
             Shape = (nx * ny,).
 
-        tokamak_psi : ndarray
+        tokamak_psi : ndarray, optional
             Vacuum flux contribution from:
                 • Active coils
                 • Passive conducting structures
             Same flattened shape as plasma_psi.
 
-        profiles : freegsnke profile object
+        profiles : freegsnke profile object, optional
             Plasma profile model used to compute toroidal current density:
                 Jtor(ψ).
 
@@ -400,6 +430,29 @@ class NKGSsolver:
             • Picard fixed-point iterations
             • Residual diagnostics during equilibrium solving
         """
+        if getattr(self, "backend", "numpy") == "jax":
+            self.jtor = profiles.Jtor(
+                self.R,
+                self.Z,
+                (tokamak_psi + plasma_psi).reshape(self.nx, self.ny),
+            )
+            psi_pred_jax, psi_bnd_jax = self.jax_engine.compute_gs_solution(self.jtor)
+            self.rhs = self.rhs_before_jtor * self.jtor
+            self.psi_boundary = np.zeros_like(self.R)
+            psi_bnd = np.asarray(psi_bnd_jax)
+            self.psi_boundary[:, 0] = psi_bnd[: self.nx]
+            self.psi_boundary[:, -1] = psi_bnd[self.nx : 2 * self.nx]
+            self.psi_boundary[0, 1 : self.ny - 1] = psi_bnd[
+                2 * self.nx : 2 * self.nx + self.ny - 2
+            ]
+            self.psi_boundary[-1, 1 : self.ny - 1] = psi_bnd[
+                2 * self.nx + self.ny - 2 :
+            ]
+            self.rhs[0, :] = self.psi_boundary[0, :]
+            self.rhs[:, 0] = self.psi_boundary[:, 0]
+            self.rhs[-1, :] = self.psi_boundary[-1, :]
+            self.rhs[:, -1] = self.psi_boundary[:, -1]
+            return plasma_psi - np.asarray(psi_pred_jax)
 
         # ------------------------------------------------------------
         # Solve free-boundary GS problem components:
