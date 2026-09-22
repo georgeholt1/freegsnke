@@ -894,7 +894,8 @@ class NKGSsolver:
             # If critical points disappear, shrink step
             # --------------------------------------------------------
             new_residual_flag = True
-            while new_residual_flag:
+            n_resize = 0
+            while new_residual_flag and n_resize < 25:
                 try:
                     # check update does not cause the disappearance of the Opoint
                     n_trial_plasma_psi = trial_plasma_psi + update
@@ -915,6 +916,11 @@ class NKGSsolver:
                         "Update resizing triggered due to failure to find a critical points."
                     )
                     update *= 0.75
+                    n_resize += 1
+
+            if new_residual_flag:
+                new_norm_rel_change = np.inf
+                new_rel_change = np.inf
 
             # --------------------------------------------------------
             # Accept or reject update
@@ -965,7 +971,8 @@ class NKGSsolver:
                 log.append("Increase in residual, update reduction triggered.")
                 # log.append(reduce_by)
                 new_residual_flag = True
-                while new_residual_flag:
+                n_reduce = 0
+                while new_residual_flag and n_reduce < 25:
                     try:
                         n_trial_plasma_psi = trial_plasma_psi + update * reduce_by
                         res0 = self.F_function(
@@ -975,6 +982,13 @@ class NKGSsolver:
                     except:
                         log.append("reduction!")
                         reduce_by *= 0.75
+                        n_reduce += 1
+
+                if new_residual_flag:
+                    n_trial_plasma_psi = trial_plasma_psi.copy()
+                    res0 = self.F_function(
+                        n_trial_plasma_psi, self.tokamak_psi, profiles
+                    )
 
                 starting_direction = np.copy(res0)
                 trial_plasma_psi = n_trial_plasma_psi.copy()

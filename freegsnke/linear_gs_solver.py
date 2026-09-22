@@ -128,8 +128,26 @@ class ILULinearGSSolver:
             for _ in range(self.n_refine):
                 r = b_scaled - self.A_scaled @ x
                 x = x + self.ilu.solve(r)
+            r = b_scaled - self.A_scaled @ x
+            b_norm = np.linalg.norm(b_scaled)
+            if b_norm > 0 and np.linalg.norm(r) > 1e-4 * b_norm:
+                # If defect correction did not achieve sufficient reduction
+                # (e.g. on higher-order asymmetric stencils), refine with BiCGSTAB
+                x, _ = spla.bicgstab(
+                    self.A_scaled,
+                    b_scaled,
+                    x0=x,
+                    M=self.M,
+                    rtol=self.rtol,
+                    atol=self.atol,
+                    maxiter=self.maxiter,
+                )
         elif self.method == "bicgstab":
-            x0 = psi_boundary.reshape(-1) if psi_boundary.shape == self.shape else None
+            x0 = (
+                psi_boundary.reshape(-1)
+                if psi_boundary is not None and getattr(psi_boundary, "shape", None) == self.shape
+                else None
+            )
             x, info = spla.bicgstab(
                 self.A_scaled,
                 b_scaled,
@@ -146,7 +164,11 @@ class ILULinearGSSolver:
                     r = b_scaled - self.A_scaled @ x
                     x = x + self.ilu.solve(r)
         elif self.method == "gmres":
-            x0 = psi_boundary.reshape(-1) if psi_boundary.shape == self.shape else None
+            x0 = (
+                psi_boundary.reshape(-1)
+                if psi_boundary is not None and getattr(psi_boundary, "shape", None) == self.shape
+                else None
+            )
             x, info = spla.gmres(
                 self.A_scaled,
                 b_scaled,
