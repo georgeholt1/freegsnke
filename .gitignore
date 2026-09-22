@@ -42,6 +42,7 @@ machine_configs/MAST-U/MAST-U_limiter.pickle
 machine_configs/MAST-U/MAST-U_magnetic_probes.pickle
 machine_configs/MAST-U/MAST-U_passive_coils.pickle
 machine_configs/MAST-U/MAST-U_wall.pickle
+reports/
 examples/example_nonlinear_evolution_diverted_*
 docs/_build
 docs/api
