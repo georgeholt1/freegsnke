@@ -149,3 +149,56 @@ def test_solver_with_custom_surrogate_instance(mastu_setup):
     )
     assert test_eq.solved
     assert solver.relative_change <= 1e-8
+
+
+def test_surrogate_resolution_generalisation(mastu_setup):
+    """Test surrogate prediction and application on different grid resolutions."""
+    eq_native, profiles_native, _ = mastu_setup
+    tok = eq_native.tokamak
+    surrogate = SurrogateInitialGuess()
+
+    # 1. Coarser resolution (33 x 65)
+    eq_coarse = equilibrium_update.Equilibrium(tok, 0.1, 2.0, -2.2, 2.2, 33, 65)
+    eq_coarse.tokamak_psi = eq_coarse.tokamak.getPsitokamak(vgreen=eq_coarse._vgreen)
+    prof_coarse = ConstrainPaxisIp(eq_coarse, 8.1e3, 6.2e5, 0.5, 1.8, 1.2)
+
+    psi_coarse = surrogate.predict(eq_coarse, prof_coarse)
+    assert psi_coarse.shape == (33, 65)
+    assert np.all(np.isfinite(psi_coarse))
+    assert np.ptp(psi_coarse) > 0.01
+
+    surrogate.apply(eq_coarse, prof_coarse)
+    assert eq_coarse.plasma_psi.shape == (33, 65)
+    assert not eq_coarse.solved
+
+    # 2. Finer resolution (129 x 257)
+    eq_fine = equilibrium_update.Equilibrium(tok, 0.1, 2.0, -2.2, 2.2, 129, 257)
+    eq_fine.tokamak_psi = eq_fine.tokamak.getPsitokamak(vgreen=eq_fine._vgreen)
+    prof_fine = ConstrainPaxisIp(eq_fine, 8.1e3, 6.2e5, 0.5, 1.8, 1.2)
+
+    psi_fine = surrogate.predict(eq_fine, prof_fine)
+    assert psi_fine.shape == (129, 257)
+    assert np.all(np.isfinite(psi_fine))
+    assert np.ptp(psi_fine) > 0.01
+
+
+def test_solver_with_different_resolution_surrogate(mastu_setup):
+    """Test that NKGSsolver solves a different grid resolution when initialized with surrogate."""
+    eq_native, _, _ = mastu_setup
+    tok = eq_native.tokamak
+
+    eq_coarse = equilibrium_update.Equilibrium(tok, 0.1, 2.0, -2.2, 2.2, 33, 65)
+    eq_coarse.tokamak_psi = eq_coarse.tokamak.getPsitokamak(vgreen=eq_coarse._vgreen)
+    prof_coarse = ConstrainPaxisIp(eq_coarse, 8.1e3, 6.2e5, 0.5, 1.8, 1.2)
+
+    solver_coarse = GSstaticsolver.NKGSsolver(eq_coarse, gs_operator_order=4)
+    solver_coarse.forward_solve(
+        eq_coarse,
+        prof_coarse,
+        target_relative_tolerance=1e-5,
+        max_solving_iterations=30,
+        suppress=True,
+        surrogate=True,
+    )
+    assert eq_coarse.solved
+
