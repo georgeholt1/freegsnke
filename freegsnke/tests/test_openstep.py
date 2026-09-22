@@ -3,9 +3,10 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import scipy.interpolate
 
 from freegsnke import GSstaticsolver, build_machine, equilibrium_update
-from freegsnke.jtor_update import ConstrainBetapIp
+from freegsnke.jtor_update import GeneralPprimeFFprime
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OPENSTEP_CONFIG_DIR = REPO_ROOT / "machine_configs" / "OpenSTEP"
@@ -45,7 +46,7 @@ def test_openstep_shipped_currents():
 
 
 def test_openstep_forward_static_solve():
-    """Verify a forward static solve converges using the OpenSTEP machine and shipped currents."""
+    """Verify forward static solve converges to the OpenSTEP reference equilibrium."""
     tokamak = build_machine.tokamak(
         active_coils_path=str(OPENSTEP_CONFIG_DIR / "OpenSTEP_active_coils.pickle"),
         passive_coils_path=str(OPENSTEP_CONFIG_DIR / "OpenSTEP_passive_coils.pickle"),
@@ -59,23 +60,42 @@ def test_openstep_forward_static_solve():
     for coil, current in currents.items():
         tokamak.set_coil_current(coil_label=coil, current_value=current)
 
+    with (OPENSTEP_CONFIG_DIR / "OpenSTEP_plasma_psi.pickle").open("rb") as f:
+        plasma_ref = pickle.load(f)
+
+    with (OPENSTEP_CONFIG_DIR / "OpenSTEP_profiles.pickle").open("rb") as f:
+        prof_data = pickle.load(f)
+
+    nx, ny = 65, 129
+    r_grid = np.linspace(0.5, 9.0, nx)
+    z_grid = np.linspace(-10.0, 10.0, ny)
+
+    interp_plasma = scipy.interpolate.RectBivariateSpline(
+        plasma_ref["R"], plasma_ref["Z"], plasma_ref["plasma_psi"]
+    )
+    psi_init = interp_plasma(r_grid, z_grid)
+
     eq = equilibrium_update.Equilibrium(
         tokamak=tokamak,
         Rmin=0.5,
         Rmax=9.0,
         Zmin=-10.0,
         Zmax=10.0,
-        nx=65,
-        ny=129,
+        nx=nx,
+        ny=ny,
+        psi=psi_init,
     )
 
-    profiles = ConstrainBetapIp(
+    profiles = GeneralPprimeFFprime(
         eq=eq,
-        betap=1.042,
-        Ip=22.76e6,
-        fvac=11.52,
-        alpha_m=1.0,
-        alpha_n=1.5,
+        Ip=prof_data["Ip"],
+        fvac=prof_data["fvac"],
+        psi_n=prof_data["psi_n"],
+        pprime_data=prof_data["pprime"],
+        ffprime_data=prof_data["ffprime"],
+        Raxis=prof_data["Raxis"],
+        Ip_logic=True,
+        interpolator="cubic_spline",
     )
 
     solver = GSstaticsolver.NKGSsolver(eq, gs_operator_order=4)
@@ -83,10 +103,23 @@ def test_openstep_forward_static_solve():
         eq=eq,
         profiles=profiles,
         constrain=None,
-        target_relative_tolerance=1e-6,
+        target_relative_tolerance=1e-8,
         verbose=False,
     )
 
-    assert np.isclose(eq.plasmaCurrent(), 22.76e6, rtol=1e-3)
-    assert eq.poloidalBeta() > 0.0
-    assert eq.psi_axis > eq.psi_bndry
+    # Check total psi against OpenSTEP reference
+    interp_tot = scipy.interpolate.RectBivariateSpline(
+        plasma_ref["R"], plasma_ref["Z"], plasma_ref["total_psi"]
+    )
+    psi_tot_ref = interp_tot(r_grid, z_grid)
+    psi_tot_solved = eq.psi()
+
+    diff = np.abs(psi_tot_solved - psi_tot_ref)
+    max_ref = np.max(np.abs(psi_tot_ref))
+    rel_error = np.max(diff) / max_ref
+
+    assert np.isclose(eq.plasmaCurrent(), prof_data["Ip"], rtol=1e-3)
+    assert np.isclose(eq.psi_axis, plasma_ref["psi_axis"], atol=0.05)
+    assert np.isclose(eq.psi_bndry, plasma_ref["psi_bndry"], atol=0.02)
+    assert rel_error < 0.005  # Within 0.5% across entire 2D grid
+    assert eq.plasmaVolume() > 600.0  # Diverted large tokamak plasma volume (~712 m^3)
