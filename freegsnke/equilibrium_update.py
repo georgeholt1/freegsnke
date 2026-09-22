@@ -21,6 +21,7 @@ along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 import pickle
+import warnings
 
 import freegs4e.equilibrium
 import matplotlib.pyplot as plt
@@ -31,6 +32,7 @@ from scipy import interpolate
 from . import limiter_func
 from .build_machine import copy_tokamak
 from .copying import copy_into
+from .serialization import LEGACY_PICKLE_EXTENSIONS, load_json
 
 
 class Equilibrium(freegs4e.equilibrium.Equilibrium):
@@ -797,45 +799,91 @@ class Equilibrium(freegs4e.equilibrium.Equilibrium):
 
     def initialize_from_equilibrium(self):
         """
-        This function loads a pickle file containing an initial guess for the plasma
-        flux (and the corners of the grid points it is located on).
+        Load an initial equilibrium flux state from a file.
 
-        Interpolation is carried out and mapped to the computational grid specified in the
-        eq class.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-
+        Supports GEQDSK format (.geqdsk, .gfile), JSON format (.json), or legacy
+        pickle files (.pickle, .pk, .pkl with deprecation warning).
+        Interpolation is carried out and mapped to the computational grid specified
+        in the equilibrium object. When reading GEQDSK format, coil flux is
+        subtracted to isolate the plasma flux contribution.
         """
+        path_str = str(self.equilibrium_path)
+        is_pickle = any(path_str.endswith(ext) for ext in LEGACY_PICKLE_EXTENSIONS)
+        is_json = path_str.endswith(".json")
 
-        # load the data from the pickle file
-        with open(self.equilibrium_path, "rb") as f:
-            data = pickle.load(f)
-
-        # extract the data (will fail if not in this format)
-        try:
-            Rmin = data["Rmin"]
-            Rmax = data["Rmax"]
-            Zmin = data["Zmin"]
-            Zmax = data["Zmax"]
-            psi_plasma = data["psi_plasma"]
-        except:
-            raise ValueError(
-                "Data in EQUILIBRIUM_PATH pickle not in correct format or missing."
+        if is_pickle:
+            warnings.warn(
+                f"Loading initial equilibrium from pickle '{path_str}' is deprecated "
+                "and will be removed in a future release. Please use GEQDSK or JSON format.",
+                DeprecationWarning,
+                stacklevel=2,
             )
+            with open(path_str, "rb") as f:
+                data = pickle.load(f)
+            try:
+                Rmin = data["Rmin"]
+                Rmax = data["Rmax"]
+                Zmin = data["Zmin"]
+                Zmax = data["Zmax"]
+                psi_plasma = np.asarray(data["psi_plasma"])
+            except Exception as e:
+                raise ValueError(
+                    f"Data in EQUILIBRIUM_PATH pickle not in correct format or missing: {e}"
+                )
+            plasma_psi_func = interpolate.RectBivariateSpline(
+                np.linspace(Rmin, Rmax, psi_plasma.shape[0]),
+                np.linspace(Zmin, Zmax, psi_plasma.shape[1]),
+                psi_plasma,
+            )
+            self.plasma_psi = plasma_psi_func(self.R, self.Z, grid=False)
 
-        # interpolate the plasma psi on the grid given in the data file
-        plasma_psi_func = interpolate.RectBivariateSpline(
-            np.linspace(Rmin, Rmax, psi_plasma.shape[0]),
-            np.linspace(Zmin, Zmax, psi_plasma.shape[1]),
-            psi_plasma,
-        )
+        elif is_json:
+            data = load_json(path_str)
+            try:
+                Rmin = data["Rmin"]
+                Rmax = data["Rmax"]
+                Zmin = data["Zmin"]
+                Zmax = data["Zmax"]
+                psi_plasma = np.asarray(data["psi_plasma"])
+            except Exception as e:
+                raise ValueError(
+                    f"Data in EQUILIBRIUM_PATH JSON not in correct format or missing: {e}"
+                )
+            plasma_psi_func = interpolate.RectBivariateSpline(
+                np.linspace(Rmin, Rmax, psi_plasma.shape[0]),
+                np.linspace(Zmin, Zmax, psi_plasma.shape[1]),
+                psi_plasma,
+            )
+            self.plasma_psi = plasma_psi_func(self.R, self.Z, grid=False)
 
-        # extract the values on the grid given in the eq object (this is the initial guess)
-        self.plasma_psi = plasma_psi_func(self.R, self.Z, grid=False)
+        else:
+            # Assume GEQDSK format via FreeQDSK
+            from freeqdsk import geqdsk
+
+            with open(path_str, "r", encoding="utf-8") as f:
+                gdata = geqdsk.read(f)
+            try:
+                rdim = gdata["rdim"]
+                zdim = gdata["zdim"]
+                rleft = gdata["rleft"]
+                zmin = gdata["zmin"]
+                Rmin = rleft
+                Rmax = rleft + rdim
+                Zmin = zmin
+                Zmax = zmin + zdim
+                total_psi = np.asarray(gdata["psi"])
+            except Exception as e:
+                raise ValueError(
+                    f"Data in EQUILIBRIUM_PATH GEQDSK not in correct format: {e}"
+                )
+            total_psi_func = interpolate.RectBivariateSpline(
+                np.linspace(Rmin, Rmax, total_psi.shape[0]),
+                np.linspace(Zmin, Zmax, total_psi.shape[1]),
+                total_psi,
+            )
+            total_psi_interp = total_psi_func(self.R, self.Z, grid=False)
+            coil_psi = self.tokamak.getPsitokamak(self._vgreen)
+            self.plasma_psi = total_psi_interp - coil_psi
 
         print(
             "Initial guess for plasma flux initialised using file provided at EQUILIBRIUM_PATH."
