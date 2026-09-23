@@ -19,6 +19,10 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.   
 """
 
+from __future__ import annotations
+
+from typing import Any
+
 import freegs4e
 
 
@@ -27,7 +31,12 @@ class Machine(freegs4e.machine.Machine):
     It can have an additional freegs4e.machine.Wall object which specifies the limiter's properties.
     """
 
-    def __init__(self, coils, wall=None, limiter=None):
+    def __init__(
+        self,
+        coils: Any,
+        wall: Any | None = None,
+        limiter: Any | None = None,
+    ) -> None:
         """Instantiates the Machine, same as freegs4e.machine.Machine.
 
         Parameters
@@ -44,19 +53,19 @@ class Machine(freegs4e.machine.Machine):
 
     def set_machine_description(
         self,
-        active_coils_data=None,
-        passive_coils_data=None,
-        limiter_data=None,
-        wall_data=None,
-        magnetic_probe_data=None,
-        active_coils_path=None,
-        passive_coils_path=None,
-        limiter_path=None,
-        wall_path=None,
-        magnetic_probe_path=None,
-        refine_mode="G",
-        preserve_currents=True,
-    ):
+        active_coils_data: dict[str, Any] | None = None,
+        passive_coils_data: list[dict[str, Any]] | None = None,
+        limiter_data: list[dict[str, Any]] | None = None,
+        wall_data: list[dict[str, Any]] | None = None,
+        magnetic_probe_data: dict[str, Any] | None = None,
+        active_coils_path: str | None = None,
+        passive_coils_path: str | None = None,
+        limiter_path: str | None = None,
+        wall_path: str | None = None,
+        magnetic_probe_path: str | None = None,
+        refine_mode: str = "G",
+        preserve_currents: bool = True,
+    ) -> Machine:
         """
         Update this machine in place from direct data dictionaries or pickle paths.
 
@@ -128,7 +137,12 @@ class Machine(freegs4e.machine.Machine):
             preserve_currents=preserve_currents,
         )
 
-    def update_active_coil(self, coil_name, active_coil_data, preserve_current=True):
+    def update_active_coil(
+        self,
+        coil_name: str,
+        active_coil_data: dict[str, Any],
+        preserve_current: bool = True,
+    ) -> Machine:
         """
         Update one active coil/circuit in place from direct machine-description data.
 
@@ -169,7 +183,11 @@ class Machine(freegs4e.machine.Machine):
             preserve_current=preserve_current,
         )
 
-    def add_active_coil(self, coil_name, active_coil_data):
+    def add_active_coil(
+        self,
+        coil_name: str,
+        active_coil_data: dict[str, Any],
+    ) -> Machine:
         """
         Add one new active coil/circuit in place from direct machine-description data.
 
@@ -206,7 +224,7 @@ class Machine(freegs4e.machine.Machine):
             active_coil_data=active_coil_data,
         )
 
-    def remove_active_coil(self, coil_name):
+    def remove_active_coil(self, coil_name: str) -> Machine:
         """
         Remove one active coil/circuit in place.
 
@@ -236,8 +254,12 @@ class Machine(freegs4e.machine.Machine):
         return remove_active_coil(self, coil_name=coil_name)
 
     def update_passive_structure(
-        self, name, passive_data, preserve_current=True, refine_mode="G"
-    ):
+        self,
+        name: str,
+        passive_data: dict[str, Any],
+        preserve_current: bool = True,
+        refine_mode: str = "G",
+    ) -> Machine:
         """
         Update one passive structure in place from direct machine-description data.
 
@@ -283,7 +305,12 @@ class Machine(freegs4e.machine.Machine):
             refine_mode=refine_mode,
         )
 
-    def add_passive_structure(self, passive_data, name=None, refine_mode="G"):
+    def add_passive_structure(
+        self,
+        passive_data: dict[str, Any],
+        name: str | None = None,
+        refine_mode: str = "G",
+    ) -> Machine:
         """
         Add one new passive structure in place from direct machine-description data.
 
@@ -325,7 +352,7 @@ class Machine(freegs4e.machine.Machine):
             refine_mode=refine_mode,
         )
 
-    def remove_passive_structure(self, name):
+    def remove_passive_structure(self, name: str) -> Machine:
         """
         Remove one passive structure in place.
 

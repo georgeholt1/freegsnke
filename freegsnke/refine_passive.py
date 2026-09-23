@@ -19,6 +19,10 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.   
 """
 
+from __future__ import annotations
+
+from typing import Any, Sequence
+
 import numpy as np
 from matplotlib.path import Path
 from scipy.stats.qmc import LatinHypercube
@@ -26,7 +30,7 @@ from scipy.stats.qmc import LatinHypercube
 LH_SEED = 42
 
 
-def _new_engine():
+def _new_engine() -> Any:
     """
     Fresh, fixed-seed Latin hypercube sampling engine.
 
@@ -41,7 +45,12 @@ def _new_engine():
     return LatinHypercube(d=2, seed=LH_SEED)
 
 
-def generate_refinement(R, Z, n_refine, refine_mode):
+def generate_refinement(
+    R: Sequence[float] | np.ndarray,
+    Z: Sequence[float] | np.ndarray,
+    n_refine: int,
+    refine_mode: str,
+) -> tuple[np.ndarray, float]:
     """
     Generate a refined set of points in (R, Z) space using a selected strategy.
 
@@ -74,9 +83,14 @@ def generate_refinement(R, Z, n_refine, refine_mode):
         return generate_refinement_LH(R, Z, n_refine)
     else:
         print("refine_mode not recognised!, please use G or LH.")
+        raise ValueError("refine_mode not recognised!, please use G or LH.")
 
 
-def generate_refinement_LH(R, Z, n_refine):
+def generate_refinement_LH(
+    R: Sequence[float] | np.ndarray,
+    Z: Sequence[float] | np.ndarray,
+    n_refine: int,
+) -> tuple[np.ndarray, float]:
     """
     Generate refinement points inside a polygon using Latin Hypercube sampling.
 
@@ -119,7 +133,11 @@ def generate_refinement_LH(R, Z, n_refine):
     return rand_fil[:n_refine], area
 
 
-def generate_refinement_G(R, Z, n_refine):
+def generate_refinement_G(
+    R: Sequence[float] | np.ndarray,
+    Z: Sequence[float] | np.ndarray,
+    n_refine: int,
+) -> tuple[np.ndarray, float]:
     """
     Generate a structured grid refinement inside a polygon.
 
@@ -151,12 +169,14 @@ def generate_refinement_G(R, Z, n_refine):
     nx = int(dv[0] // dl)
     ny = int(dv[1] // dl)
 
-    grid_fil = []
+    grid_fil: np.ndarray = np.empty((0, 2))
     while len(grid_fil) < n_refine:
+        x: Any
         if nx > 1:
             x = np.linspace(vmin[0] * 1.00001, vmax[0] * 0.99999, nx)
         else:
             x = np.mean(R)
+        y: Any
         if ny > 1:
             y = np.linspace(vmin[1] * 1.00001, vmax[1] * 0.99999, ny)
         else:
@@ -175,7 +195,11 @@ def generate_refinement_G(R, Z, n_refine):
     return grid_fil, area
 
 
-def find_area(R, Z, n_refine):
+def find_area(
+    R: Sequence[float] | np.ndarray,
+    Z: Sequence[float] | np.ndarray,
+    n_refine: int | float | None = 100,
+) -> tuple[float, Path, np.ndarray, np.ndarray, np.ndarray, float, float]:
     """
     Estimate polygon area and construct a point-in-polygon test path.
 

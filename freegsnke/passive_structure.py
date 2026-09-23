@@ -20,6 +20,10 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+from __future__ import annotations
+
+from typing import Any, Sequence
+
 import freegs4e
 import matplotlib.pyplot as plt
 import numpy as np
@@ -37,14 +41,30 @@ class PassiveStructure(freegs4e.coil.Coil):
     the structure -- uniformly.
     """
 
+    area: float
+    R: float
+    Z: float
+    Len: float
+    turns: int
+    control: bool | int
+    current: float
+    Rpolygon: np.ndarray
+    Zpolygon: np.ndarray
+    vertices: np.ndarray
+    polygon: Polygon
+    refine_mode: str
+    n_refine: int
+    filaments: np.ndarray
+    greens: dict[tuple[float, float, float, float, int], dict[str, np.ndarray]]
+
     def __init__(
         self,
-        R,
-        Z,
-        min_refine_per_area,
-        min_refine_per_length,
-        refine_mode="G",
-    ):
+        R: Sequence[float] | np.ndarray,
+        Z: Sequence[float] | np.ndarray,
+        min_refine_per_area: float,
+        min_refine_per_length: float,
+        refine_mode: str = "G",
+    ) -> None:
         """Instantiates the object and builds the refinement of the provided polygonal shape.
 
         Parameters
@@ -62,7 +82,7 @@ class PassiveStructure(freegs4e.coil.Coil):
         self.area = res[0]
         self.R = res[-2]
         self.Z = res[-1]
-        self.Len = np.linalg.norm(res[-3])
+        self.Len = float(np.linalg.norm(res[-3]))
 
         self.turns = 1
         self.control = False
@@ -83,7 +103,7 @@ class PassiveStructure(freegs4e.coil.Coil):
 
         self.greens = {}
 
-    def copy(self):
+    def copy(self) -> PassiveStructure:
         """
         Create a shallow copy of the control object without reinitialising
         geometry or recomputing Green's functions.
@@ -138,7 +158,9 @@ class PassiveStructure(freegs4e.coil.Coil):
 
         return new_obj
 
-    def create_RZ_key(self, R, Z):
+    def create_RZ_key(
+        self, R: np.ndarray, Z: np.ndarray
+    ) -> tuple[float, float, float, float, int]:
         """
         Create a hashable key identifying a specific R–Z grid for caching Green's functions.
 
@@ -160,12 +182,18 @@ class PassiveStructure(freegs4e.coil.Coil):
             (R_min, R_max, Z_min, Z_max, N),
             where N = total number of grid points in `R`.
         """
-        RZ_key = (np.min(R), np.max(R), np.min(Z), np.max(Z), np.size(R))
+        RZ_key = (
+            float(np.min(R)),
+            float(np.max(R)),
+            float(np.min(Z)),
+            float(np.max(Z)),
+            int(np.size(R)),
+        )
         return RZ_key
 
     def build_refining_filaments(
         self,
-    ):
+    ) -> np.ndarray:
         """
         Construct the set of refining filaments used to discretise the control
         region at higher resolution.
@@ -194,7 +222,7 @@ class PassiveStructure(freegs4e.coil.Coil):
         )
         return filaments
 
-    def build_control_psi(self, R, Z):
+    def build_control_psi(self, R: np.ndarray, Z: np.ndarray) -> None:
         """
         Compute and cache the Green's function for the poloidal flux (ψ)
         induced by the control filaments on a specified R–Z grid.
@@ -235,7 +263,7 @@ class PassiveStructure(freegs4e.coil.Coil):
         except:
             self.greens[RZ_key] = {"psi": greens_psi}
 
-    def build_control_br(self, R, Z):
+    def build_control_br(self, R: np.ndarray, Z: np.ndarray) -> None:
         """
         Compute and cache the Green's function for the radial magnetic field (Br)
         induced by the control filaments on a specified R–Z grid.
@@ -276,7 +304,7 @@ class PassiveStructure(freegs4e.coil.Coil):
         except:
             self.greens[RZ_key] = {"Br": greens_br}
 
-    def build_control_bz(self, R, Z):
+    def build_control_bz(self, R: np.ndarray, Z: np.ndarray) -> None:
         """
         Compute and cache the Green's function for the vertical magnetic field (Bz)
         induced by the control filaments on a specified R–Z grid.
@@ -318,7 +346,7 @@ class PassiveStructure(freegs4e.coil.Coil):
         except:
             self.greens[RZ_key] = {"Bz": greens_bz}
 
-    def controlPsi(self, R, Z):
+    def controlPsi(self, R: np.ndarray, Z: np.ndarray) -> np.ndarray:
         """
         Return the poloidal flux ψ at a given observation point
         due to a unit current in the control element.
@@ -347,7 +375,7 @@ class PassiveStructure(freegs4e.coil.Coil):
             greens_ = self.greens[RZ_key]["psi"]
         return greens_
 
-    def controlBr(self, R, Z):
+    def controlBr(self, R: np.ndarray, Z: np.ndarray) -> np.ndarray:
         """
         Retrieve the radial magnetic field component (Br) at a given
         point (R, Z) due to a unit current source.
@@ -385,7 +413,7 @@ class PassiveStructure(freegs4e.coil.Coil):
             greens_ = self.greens[RZ_key]["Br"]
         return greens_
 
-    def controlBz(self, R, Z):
+    def controlBz(self, R: np.ndarray, Z: np.ndarray) -> np.ndarray:
         """
         Retrieve the vertical magnetic field component (Bz) at a given
         point (R, Z) due to a unit current source.
@@ -422,7 +450,7 @@ class PassiveStructure(freegs4e.coil.Coil):
             greens_ = self.greens[RZ_key]["Bz"]
         return greens_
 
-    def plot(self, axis=None, show=False):
+    def plot(self, axis: Any | None = None, show: bool = False) -> Any:
         """
         Plot the passive structure polygon on a Matplotlib axis.
 
@@ -459,3 +487,6 @@ class PassiveStructure(freegs4e.coil.Coil):
 
         axis.add_patch(self.polygon)
         return axis
+
+
+passive_structure = PassiveStructure

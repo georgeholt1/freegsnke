@@ -21,9 +21,12 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+from __future__ import annotations
+
 import math
 import os
 import pickle
+from typing import Any, Callable
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -40,10 +43,10 @@ from scipy.interpolate import interp1d
 
 
 def get_machine_data(
-    save_path=None,
-    shot=45425,
-    split_passives=True,
-):
+    save_path: str | None = None,
+    shot: int = 45425,
+    split_passives: bool = True,
+) -> None:
     """
     This functions builds the active coil, passive structure, wall, and limiter machine description pickle
     files for MAST-U (for a given shot number).
@@ -82,7 +85,7 @@ def get_machine_data(
     pfcoil = client.geometry("/magnetics/pfcoil", shot)
     dict2 = {}
     for child in pfcoil.data.children:
-        dict1 = {}
+        dict1: dict[str, Any] | None = None
         for grandchild in child.children:
             dict0 = None
             try:
@@ -173,7 +176,7 @@ def get_machine_data(
     active_coils_uda = data["geometry_pfcoil"]
 
     # extract data into required form
-    active_coils = {}
+    active_coils: dict[str, Any] = {}
 
     # coil definitions (do not modify)
     Solenoid = {
@@ -572,7 +575,7 @@ def get_machine_data(
 
     # calculate the total area for each non-excluded EFIT group
     # --> this is for assigning the passive currents  later on(see further below)
-    group_total_area = {}
+    group_total_area: dict[str, Any] = {}
     for name in passive_coils_uda.keys():
         if name not in excluded_structures:
             coil_data = passive_coils_uda[name]
@@ -750,7 +753,9 @@ def get_machine_data(
     print("MAST-U geometry data successfully extracted and pickle files built.")
 
 
-def load_efit_times_and_status(client, shot=45425):
+def load_efit_times_and_status(
+    client: Any, shot: int = 45425
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Extract the (magnetics-only) EFIT++ reconstruction shot status, which tells us whether
     each time slice converged or not.
@@ -776,7 +781,9 @@ def load_efit_times_and_status(client, shot=45425):
     return status.time.data, status.data
 
 
-def load_efit_times_and_status_splines(client, shot=45425):
+def load_efit_times_and_status_splines(
+    client: Any, shot: int = 45425
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Extract the (magnetics + motional stark effect) EFIT++ reconstruction shot status, which
     tells us whether each time slice converged or not.
@@ -805,8 +812,22 @@ def load_efit_times_and_status_splines(client, shot=45425):
 # ------------
 # ------------
 def load_static_solver_inputs(
-    client, active_coils_path, passive_coils_path, shot=45425, zero_passives=False
-):
+    client: Any,
+    active_coils_path: str,
+    passive_coils_path: str,
+    shot: int = 45425,
+    zero_passives: bool = False,
+) -> tuple[
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+]:
     """
     Extract the key (magnetics-only) EFIT++ reconstruction data at each time slice so that
     we can use it in FreeGSNKE to carry out static forward GS solves.
@@ -980,8 +1001,26 @@ def load_static_solver_inputs(
 # ------------
 # ------------
 def load_static_solver_inputs_splines(
-    client, active_coils_path, passive_coils_path, shot=45425, zero_passives=False
-):
+    client: Any,
+    active_coils_path: str,
+    passive_coils_path: str,
+    shot: int = 45425,
+    zero_passives: bool = False,
+) -> tuple[
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+]:
     """
     Extract the key (magnetics + motional stark effect) EFIT++ reconstruction data at each
     time slice so that we can use it in FreeGSNKE to carry out static forward GS solves.
@@ -1185,7 +1224,22 @@ def load_static_solver_inputs_splines(
     )
 
 
-def extract_EFIT_outputs(client, shot, time_indices):
+def extract_EFIT_outputs(
+    client: Any, shot: int, time_indices: list[int] | np.ndarray
+) -> tuple[
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    dict[str, Any],
+    dict[str, Any],
+]:
     """
     Extract the key (magnetics-only) EFIT++ reconstruction output data at each
     time slice so that we can compare to FreeGSNKE.
@@ -1349,7 +1403,22 @@ def extract_EFIT_outputs(client, shot, time_indices):
     )
 
 
-def extract_EFIT_outputs_splines(client, shot, time_indices):
+def extract_EFIT_outputs_splines(
+    client: Any, shot: int, time_indices: list[int] | np.ndarray
+) -> tuple[
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    dict[str, Any],
+    dict[str, Any],
+]:
     """
     Extract the key (magnetics + motional stark effect) EFIT++ reconstruction output data at each
     time slice so that we can compare to FreeGSNKE.
@@ -1514,9 +1583,9 @@ def extract_EFIT_outputs_splines(client, shot, time_indices):
 
 
 def load_currents_voltages_and_TS_signals(
-    client,
-    shot=45425,
-):
+    client: Any,
+    shot: int = 45425,
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """
     Extract the (analysed) AMC currents, the (raw) XDC/XCM voltages, and
     (if available) the (analysed) AYC Thomson scattering information.
@@ -1540,8 +1609,7 @@ def load_currents_voltages_and_TS_signals(
     dt = 0.001
     coil_ordering = [2, 3, 4, 6, 7, 8, 5, 9, 10, 11, 1, 0]
 
-    att_dict = {}
-    att_dict = {
+    att_dict: dict[str, Any] = {
         "Solenoid": {
             "name": "P1PS",
             "PS": True,
@@ -1640,7 +1708,7 @@ def load_currents_voltages_and_TS_signals(
     len_coils = len(att_dict)
     coil_list = np.sort(list(att_dict.keys()))
 
-    def get_voltages(shotn):
+    def get_voltages(shotn: int) -> dict[str, Any]:
         """
         Retrieve coil voltage signals for a given shot number.
 
@@ -1691,7 +1759,7 @@ def load_currents_voltages_and_TS_signals(
                 pass  # print('voltages not found for coil '+attk+', shot '+str(shotn))
         return outdict
 
-    def get_req_voltages(shotn):
+    def get_req_voltages(shotn: int) -> dict[str, Any]:
         """
         Retrieve requested (reference/commanded) coil voltages for a given shot.
 
@@ -1744,7 +1812,7 @@ def load_currents_voltages_and_TS_signals(
                 print("Voltage not found for coil " + coil + ".")
         return outdict
 
-    def get_coilcurrs_AMC(shotn):
+    def get_coilcurrs_AMC(shotn: int) -> dict[str, Any]:
         """
         Retrieve AMC Rogowski coil current measurements for a given shot.
 
@@ -1775,7 +1843,7 @@ def load_currents_voltages_and_TS_signals(
         -----
         Missing coil signals are silently ignored.
         """
-        outdict = {}
+        outdict: dict[str, Any] = {}
         for attk in att_dict:
             outdict[attk] = {}
             for coil in att_dict[attk]["rogextn"]:
@@ -1791,7 +1859,7 @@ def load_currents_voltages_and_TS_signals(
                     pass  # print('current not found for coil '+attk+', shot '+str(shotn))
         return outdict
 
-    def get_coilcurrs(shotn):
+    def get_coilcurrs(shotn: int) -> dict[str, Any]:
         """
         Retrieve measured coil currents for a given shot.
 
@@ -1846,7 +1914,7 @@ def load_currents_voltages_and_TS_signals(
                 pass  # print('current not found for coil '+attk+', shot '+str(shotn))
         return outdict
 
-    def get_rogs(shotn):
+    def get_rogs(shotn: int) -> dict[str, Any]:
         """
         Retrieve Rogowski coil measurements (external and internal) for a given shot.
 
@@ -1880,7 +1948,7 @@ def load_currents_voltages_and_TS_signals(
         Missing channels are silently ignored. Internal Rogowski data is only
         included if available for the given actuator.
         """
-        outdict = {}
+        outdict: dict[str, Any] = {}
         for attk in att_dict:
             outdict[attk] = {}
             tinner = att_dict[attk]
@@ -1910,7 +1978,7 @@ def load_currents_voltages_and_TS_signals(
         return outdict
 
     # extract and store data
-    outdict = {}
+    data_out: dict[str, Any] = {}
     shotn = int(shot)
     flag_plasma = 0
     # # this is a dictionary where each entry is of the kind 'coil':{'data':array , 'times':array}
@@ -1953,7 +2021,7 @@ def load_currents_voltages_and_TS_signals(
             time_sample = np.arange(time_int[0], time_int[1], dt)
             data_out["time"] = np.array([time_sample[0], time_sample[-1], dt])
 
-            for coil in coil_list:
+            for ic, coil in enumerate(coil_list):
                 data_out[coil] = {}
                 # data_out[coil][2] = []
                 # print(ic)
@@ -2043,11 +2111,11 @@ def load_currents_voltages_and_TS_signals(
 
 
 def get_AMC_currents(
-    t,
-    att_dict,
-    data,
-    dt=0.002,
-):
+    t: float,
+    att_dict: dict[str, Any],
+    data: dict[str, Any],
+    dt: float = 0.002,
+) -> np.ndarray:
     """
     Extract required AMC currents in the active coils in MAST-U at time 't' from 'data'
     dictionary by taking the average current between [t - dt, t + dt].
@@ -2075,7 +2143,7 @@ def get_AMC_currents(
     # extract AMC currents
     coil_names = list(att_dict.keys())
     for i, coil in enumerate(coil_names):
-        curr = 0
+        curr: float = 0.0
 
         # need to cycle through the upper and lower coils
         for rog in att_dict[coil]["rogextn"]:
@@ -2097,12 +2165,12 @@ def get_AMC_currents(
 
 
 def get_XDC_voltages(
-    t,
-    dt,
-    att_dict,
-    data,
-    nsteps=1,
-):
+    t: float,
+    dt: float,
+    att_dict: dict[str, Any],
+    data: dict[str, Any],
+    nsteps: int = 1,
+) -> np.ndarray:
     """
     Extract required XDC voltages in the active coils in MAST-U at time 't' from 'data'
     dictionary by taking the average voltage between [t-dt, t+dt].
@@ -2161,13 +2229,13 @@ def get_XDC_voltages(
 
 
 def smooth_data(
-    t_start,
-    t_end,
-    data,
-    t_data_start,
-    t_data_end,
-    n_data_points=None,
-):
+    t_start: float,
+    t_end: float,
+    data: np.ndarray,
+    t_data_start: float,
+    t_data_end: float,
+    n_data_points: int | None = None,
+) -> float:
     """
     Finds the median of the `data' vector values between [t_start, t_end]. Requires knowledge
     of the time interval the data is recorded over [t_data_start, t_data_end].
@@ -2209,20 +2277,20 @@ def smooth_data(
 
 
 def vertical_controller(
-    dt,
-    target,
-    history,
-    k_prop,
-    k_int,
-    k_deriv,
-    prop_exponent,
-    prop_error,
-    deriv_threshold,
-    int_factor,
-    Ip,
-    Ip_ref=None,
-    derivative_lag=1,
-):
+    dt: float,
+    target: float,
+    history: list[float],
+    k_prop: float,
+    k_int: float,
+    k_deriv: float,
+    prop_exponent: float,
+    prop_error: float,
+    deriv_threshold: float,
+    int_factor: float,
+    Ip: float,
+    Ip_ref: float | None = None,
+    derivative_lag: int = 1,
+) -> float:
     """
     PID controller required for plasma vertical position. Computes the required voltage
     in the vertical stability coil to stabilise the plasma.
@@ -2298,21 +2366,21 @@ def vertical_controller(
 
 
 def plasma_resistivity_controller(
-    t,
-    dt,
-    target,
-    history,
-    k_prop,
-    k_int,
-    k_deriv,
-    prop_exponent,
-    prop_error,
-    deriv_threshold,
-    int_factor,
-    derivative_lag=1,
-    shift_pred=True,
-    Ip_func=None,
-):
+    t: float,
+    dt: float,
+    target: float,
+    history: list[float],
+    k_prop: float,
+    k_int: float,
+    k_deriv: float,
+    prop_exponent: float,
+    prop_error: float,
+    deriv_threshold: float,
+    int_factor: float,
+    derivative_lag: int = 1,
+    shift_pred: bool = True,
+    Ip_func: Callable[[float], float] | None = None,
+) -> float:
     """
     PID controller required to calculate required change in plasma resistivity.
 
@@ -2375,7 +2443,7 @@ def plasma_resistivity_controller(
             abs(derivative_term), deriv_threshold
         )
 
-        if shift_pred:
+        if shift_pred and Ip_func is not None:
             derivative = (history[-1] - history[-1 - derivative_lag]) / (
                 derivative_lag * dt
             )
@@ -2391,8 +2459,15 @@ def plasma_resistivity_controller(
 
 
 def get_element_vertices(
-    centreR, centreZ, dR, dZ, a1, a2, version=0.1, close_shape=False
-):
+    centreR: float,
+    centreZ: float,
+    dR: float,
+    dZ: float,
+    a1: float,
+    a2: float,
+    version: float = 0.1,
+    close_shape: bool = False,
+) -> list[Any]:
     """
     Convert EFIT++ description of parallelograms to four vertices (used in FreeGSNKE
     passive structures).
@@ -2493,7 +2568,13 @@ def get_element_vertices(
     return [rr, zz, dR, dZ]
 
 
-def find_strikepoints(R, Z, psi, psi_boundary, wall):
+def find_strikepoints(
+    R: np.ndarray,
+    Z: np.ndarray,
+    psi: np.ndarray,
+    psi_boundary: float,
+    wall: Any,
+) -> np.ndarray | None:
     """
     Find the strikepoints of an equilibrium with the wall.
 
@@ -2552,7 +2633,15 @@ def find_strikepoints(R, Z, psi, psi_boundary, wall):
     return out
 
 
-def Separatrix(R, Z, psi, ntheta, psival=1.0, theta_grid=None, input_opoint=None):
+def Separatrix(
+    R: np.ndarray,
+    Z: np.ndarray,
+    psi: np.ndarray,
+    ntheta: int,
+    psival: float = 1.0,
+    theta_grid: np.ndarray | None = None,
+    input_opoint: tuple[float, float] | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Compute separatrix coordinates for a given equilibrium flux map.
 
@@ -2644,7 +2733,17 @@ def Separatrix(R, Z, psi, ntheta, psival=1.0, theta_grid=None, input_opoint=None
     return points, theta_grid
 
 
-def find_psisurface(psifunc, R, Z, r0, z0, r1, z1, psival=1.0, n=100):
+def find_psisurface(
+    psifunc: Callable[..., Any],
+    R: np.ndarray,
+    Z: np.ndarray,
+    r0: float,
+    z0: float,
+    r1: float,
+    z1: float,
+    psival: float = 1.0,
+    n: int = 100,
+) -> tuple[float, float]:
     """
     Find an intersection point of a ψ = const surface along a straight line.
 
@@ -2692,14 +2791,15 @@ def find_psisurface(psifunc, R, Z, r0, z0, r1, z1, psival=1.0, n=100):
         r1 = r0 + (r1 - r0) * abs((zclip - z0) / (z1 - z0))
         z1 = zclip
 
-    r = linspace(r0, r1, n)
-    z = linspace(z0, z1, n)
+    r_pts = linspace(r0, r1, n)
+    z_pts = linspace(z0, z1, n)
 
-    pnorm = psifunc(r, z, grid=False)
+    pnorm = psifunc(r_pts, z_pts, grid=False)
 
     if hasattr(psival, "__len__"):
         pass
-
+        r = float(r_pts[0])
+        z = float(z_pts[0])
     else:
         # Only one value
         ind = argmax(pnorm > psival)
@@ -2709,13 +2809,13 @@ def find_psisurface(psifunc, R, Z, r0, z0, r1, z1, psival=1.0, n=100):
         # make f gradient to psival surface
         f = (pnorm[ind] - psival) / (pnorm[ind] - pnorm[ind - 1])
 
-        r = (1.0 - f) * r[ind] + f * r[ind - 1]
-        z = (1.0 - f) * z[ind] + f * z[ind - 1]
+        r = float((1.0 - f) * r_pts[ind] + f * r_pts[ind - 1])
+        z = float((1.0 - f) * z_pts[ind] + f * z_pts[ind - 1])
 
     return r, z
 
 
-def max_euclidean_distance(points1, points2):
+def max_euclidean_distance(points1: np.ndarray, points2: np.ndarray) -> float:
     """
     Compute the maximum Euclidean distance between corresponding points in two sets.
 
@@ -2744,7 +2844,7 @@ def max_euclidean_distance(points1, points2):
     return np.max(np.sqrt(np.sum((points1_valid - points2_valid) ** 2, axis=1)))
 
 
-def median_euclidean_distance(points1, points2):
+def median_euclidean_distance(points1: np.ndarray, points2: np.ndarray) -> float:
     """
     Compute the median Euclidean distance between corresponding points in two sets.
 
@@ -2773,7 +2873,9 @@ def median_euclidean_distance(points1, points2):
     return np.median(np.sqrt(np.sum((points1_valid - points2_valid) ** 2, axis=1)))
 
 
-def separatrix_areas(separatrix_1, separatrix_2):
+def separatrix_areas(
+    separatrix_1: np.ndarray, separatrix_2: np.ndarray
+) -> tuple[float, sh.Polygon, sh.Polygon]:
     """
     Compute a geometric similarity metric between two separatrix shapes.
 
@@ -2817,12 +2919,12 @@ def separatrix_areas(separatrix_1, separatrix_2):
 
 
 def interpolate_data(
-    times,
-    data,
-    t_start=None,
-    t_final=None,
-    order=5,
-):
+    times: np.ndarray,
+    data: np.ndarray,
+    t_start: float | None = None,
+    t_final: float | None = None,
+    order: int = 5,
+) -> Polynomial:
     """
     Fit a polynomial to time-series data and return an evaluatable interpolant.
 
@@ -2854,12 +2956,12 @@ def interpolate_data(
     if t_start is None:
         start_idx = 0
     else:
-        start_idx = np.argmin(np.abs(times - t_start))
+        start_idx = int(np.argmin(np.abs(times - t_start)))
 
     if t_final is None:
         final_idx = 0
     else:
-        final_idx = np.argmin(np.abs(times - t_final))
+        final_idx = int(np.argmin(np.abs(times - t_final)))
 
     # interpolate
     poly = Polynomial.fit(times[start_idx:final_idx], data[start_idx:final_idx], order)

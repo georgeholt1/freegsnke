@@ -20,9 +20,12 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.   
 """
 
+from __future__ import annotations
+
 import os
 import pickle
 from copy import deepcopy
+from typing import Any
 
 import numpy as np
 from deepdiff import DeepDiff
@@ -31,7 +34,11 @@ from freegs4e.gradshafranov import Greens, mu0
 from .refine_passive import generate_refinement
 
 
-def build_tokamak_R_and_M(tokamak, rebuild=False, changed_coils=None):
+def build_tokamak_R_and_M(
+    tokamak: Any,
+    rebuild: bool = False,
+    changed_coils: list[str] | None = None,
+) -> Any:
     """
     Build the resistance (R) and inductance (M) matrices for the machine within the tokamak
     object. This will construct R and M for the active coils (and any passive structures).
@@ -129,7 +136,7 @@ def build_tokamak_R_and_M(tokamak, rebuild=False, changed_coils=None):
         )
 
 
-def append_tokamak_R_and_M_entries(tokamak, new_labels):
+def append_tokamak_R_and_M_entries(tokamak: Any, new_labels: list[str]) -> None:
     """
     Extend the existing resistance (R) and inductance (M) matrices with
     entries for coil labels that have just been appended to the machine.
@@ -174,7 +181,9 @@ def append_tokamak_R_and_M_entries(tokamak, new_labels):
     tokamak.coil_self_ind = M
 
 
-def insert_tokamak_R_and_M_entries(tokamak, index, new_labels):
+def insert_tokamak_R_and_M_entries(
+    tokamak: Any, index: int, new_labels: list[str]
+) -> None:
     """
     Insert resistance (R) and inductance (M) matrix entries for coil labels
     that have just been inserted into the machine at a given position, shifting
@@ -241,7 +250,7 @@ def insert_tokamak_R_and_M_entries(tokamak, index, new_labels):
     tokamak.coil_self_ind = M
 
 
-def remove_tokamak_R_and_M_entry(tokamak, index):
+def remove_tokamak_R_and_M_entry(tokamak: Any, index: int) -> None:
     """
     Remove the resistance (R) and inductance (M) matrix entries at a given
     coil position.
@@ -269,7 +278,7 @@ def remove_tokamak_R_and_M_entry(tokamak, index):
     )
 
 
-def _update_tokamak_R_and_M_entries(tokamak, changed_coils):
+def _update_tokamak_R_and_M_entries(tokamak: Any, changed_coils: list[str]) -> None:
     """Update only R/M entries affected by changed coil labels."""
 
     changed_indices = [tokamak.coils_list.index(name) for name in changed_coils]
@@ -286,7 +295,7 @@ def _update_tokamak_R_and_M_entries(tokamak, changed_coils):
             tokamak.coil_self_ind[j, i] = val * 2 * np.pi
 
 
-def _calc_resistance_entry(tokamak, coil_name):
+def _calc_resistance_entry(tokamak: Any, coil_name: str) -> float:
     """Calculate the unscaled resistance entry for one coil label."""
 
     coords = tokamak.coils_dict[coil_name]["coords"]
@@ -297,7 +306,7 @@ def _calc_resistance_entry(tokamak, coil_name):
     )
 
 
-def _calc_mutual_inductance_entry(tokamak, name_i, name_j):
+def _calc_mutual_inductance_entry(tokamak: Any, name_i: str, name_j: str) -> float:
     """Calculate the unscaled mutual-inductance entry for two coil labels."""
 
     coords_i = tokamak.coils_dict[name_i]["coords"]
@@ -327,7 +336,7 @@ def _calc_mutual_inductance_entry(tokamak, name_i, name_j):
     return np.sum(green_m)
 
 
-def self_ind_circular_loop(R, dR):
+def self_ind_circular_loop(R: float, dR: float) -> float:
     """
     Calculate the self inductance of a circular loop with radius
     R and width dR.
