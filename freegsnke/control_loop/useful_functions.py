@@ -19,7 +19,10 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from typing import Any, Optional, Union
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import Any, TypeAlias
 
 import numpy as np
 from scipy.interpolate import UnivariateSpline, interp1d
@@ -111,7 +114,9 @@ class ConstantInterpolant:
 
 # an interpolant produced by `interpolate_step`/`interpolate_spline`: callable at a
 # time `t`, and (for splines only) supports `.derivative()`
-Interpolant = Union[ConstantInterpolant, interp1d, UnivariateSpline]
+Interpolant: TypeAlias = (
+    ConstantInterpolant | interp1d | UnivariateSpline | Callable[..., Any]
+)
 
 
 def interpolate_step(
@@ -258,13 +263,13 @@ def check_data_entry(
 
 
 def PID(
-    error_prop: Optional[Union[float, np.ndarray]] = None,
-    error_int: Optional[Union[float, np.ndarray]] = None,
-    error_deriv: Optional[Union[float, np.ndarray]] = None,
-    k_prop: Optional[Union[float, np.ndarray]] = 0.0,
-    k_int: Optional[Union[float, np.ndarray]] = 0.0,
-    k_deriv: Optional[Union[float, np.ndarray]] = 0.0,
-) -> Union[float, np.ndarray]:
+    error_prop: float | np.ndarray | None = None,
+    error_int: float | np.ndarray | None = None,
+    error_deriv: float | np.ndarray | None = None,
+    k_prop: float | np.ndarray | None = 0.0,
+    k_int: float | np.ndarray | None = 0.0,
+    k_deriv: float | np.ndarray | None = 0.0,
+) -> float | np.ndarray:
     """
     Compute a flexible PID controller output.
 

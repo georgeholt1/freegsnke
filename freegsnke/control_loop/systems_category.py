@@ -19,7 +19,9 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from typing import Tuple
+from __future__ import annotations
+
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -133,8 +135,8 @@ class SystemsController:
         self.ctrl_coils = ctrl_coils
 
         # check correct data is input and in correct format
-        self.keys_to_spline = [coil + "_pert" for coil in self.ctrl_coils]
-        self.keys_to_step = [
+        self.keys_to_spline: list[str] = [coil + "_pert" for coil in self.ctrl_coils]
+        self.keys_to_step: list[str] = [
             "min_coil_curr_lims",
             "max_coil_curr_lims",
             "max_coil_curr_ramp_lims",
@@ -159,8 +161,8 @@ class SystemsController:
         """
 
         # create dictionaries to store the interpolants and spline derivatives
-        self.interpolants = {}
-        self.interpolant_derivatives = {}
+        self.interpolants: dict[str, Any] = {}
+        self.interpolant_derivatives: dict[str, Any] = {}
 
         # interpolate the input data
         for key in self.keys_to_spline:
@@ -176,7 +178,7 @@ class SystemsController:
         I_unapproved: np.ndarray,
         dI_dt_unapproved: np.ndarray,
         verbose: bool = False,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Applies coil current perturbations to unapproved coil currents and enforce coil current
         constraints to produce approved control signals.
@@ -403,5 +405,5 @@ class SystemsController:
         axes[0].legend(loc="best")
         axes[-1].set_xlabel(r"Time [$s$]")
         axes[-1].set_xlim([tmin, tmax])
-        plt.tight_layout(rect=[0, 0, 1, 0.97])
+        plt.tight_layout(rect=(0.0, 0.0, 1.0, 0.97))
         plt.show()

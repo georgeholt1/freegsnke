@@ -19,7 +19,9 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from typing import Tuple
+from __future__ import annotations
+
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -140,7 +142,7 @@ class PlasmaController:
         """
 
         # create a dictionary to store the spline functions
-        self.interpolants = {}
+        self.interpolants: dict[str, Any] = {}
 
         # interpolate the input data
         for key in self.data.keys():
@@ -157,7 +159,7 @@ class PlasmaController:
         ip_meas: float,
         ip_hist_prev: float,
         ip_err_prev: float,
-    ) -> Tuple[float, float, float]:
+    ) -> tuple[float, float, float]:
         """
         Computes the time derivative of the plasma current request (`dip_dt`) and updates the
         integral history of the plasma current error (`ip_hist`) using a blended feedback and
@@ -228,7 +230,7 @@ class PlasmaController:
         # update ip_hist
         ip_hist = ip_hist_prev + (ip_err * dt)
 
-        return dip_dt, ip_hist, ip_err
+        return float(dip_dt), float(ip_hist), float(ip_err)
 
     def plot_data(self, tmin: float = -1.0, tmax: float = 1.0, nt: int = 1001) -> None:
         """
@@ -343,5 +345,5 @@ class PlasmaController:
         axes[0].legend(loc="best")
         axes[-1].set_xlabel(r"Time [$s$]")
         axes[-1].set_xlim([tmin, tmax])
-        plt.tight_layout(rect=[0, 0, 1, 0.97])
+        plt.tight_layout(rect=(0.0, 0.0, 1.0, 0.97))
         plt.show()

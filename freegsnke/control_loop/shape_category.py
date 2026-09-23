@@ -19,7 +19,9 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from typing import Callable, Optional, Tuple
+from __future__ import annotations
+
+from typing import Any, Protocol
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,6 +33,21 @@ from freegsnke.control_loop.useful_functions import (
     interpolate_spline,
     interpolate_step,
 )
+
+
+class ShapeControlFunc(Protocol):
+    """Protocol for shape controller callable methods."""
+
+    def __call__(
+        self,
+        t: float,
+        dt: float,
+        T_meas: np.ndarray,
+        T_err_prev: np.ndarray,
+        T_hist_prev: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Compute shape control requests."""
+        ...
 
 
 class ShapeController:
@@ -83,7 +100,7 @@ class ShapeController:
         self,
         data: dict[str, dict[str, Waveform]],
         ctrl_targets: list[str],
-        mode: Optional[str] = None,
+        mode: str | None = None,
     ) -> None:
         """
         Initialise the shape controller.
@@ -161,10 +178,7 @@ class ShapeController:
 
         if mode == "PI_with_P_damping":
             # select control algorithm
-            self.run_control: Callable[
-                [float, float, np.ndarray, np.ndarray, np.ndarray],
-                Tuple[np.ndarray, np.ndarray, np.ndarray],
-            ] = self.run_control_PI_with_P_damping
+            self.run_control: ShapeControlFunc = self.run_control_PI_with_P_damping
 
             # inputs required for this algorithm
             self.keys_to_spline = ["ff", "ref", "blend"]
@@ -207,8 +221,8 @@ class ShapeController:
         """
 
         # create dictionaries to store the interpolants and spline derivatives
-        self.interpolants = {}
-        self.interpolant_derivatives = {}
+        self.interpolants: dict[str, dict[str, Any]] = {}
+        self.interpolant_derivatives: dict[str, dict[str, Any]] = {}
 
         # interpolate the input data
         for targ in self.ctrl_targets:
@@ -229,7 +243,7 @@ class ShapeController:
         T_meas: np.ndarray,
         T_err_prev: np.ndarray,
         T_hist_prev: np.ndarray,
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Computes the time derivative of shape target requests based on measured values,
         reference trajectories, and control gains. It blends feedforward and feedback
@@ -316,7 +330,7 @@ class ShapeController:
         T_meas: np.ndarray,
         T_err_prev: np.ndarray,
         T_hist_prev: np.ndarray,
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Computes the time derivative of shape target requests based on measured values,
         reference trajectories, and control gains. It blends feedforward and feedback
@@ -412,7 +426,7 @@ class ShapeController:
         T_meas: np.ndarray,
         T_err_prev: np.ndarray,
         T_hist_prev: np.ndarray,
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Computes the time derivative of shape target requests based on measured values,
         reference trajectories, and control gains. It blends feedforward and feedback
@@ -651,5 +665,5 @@ class ShapeController:
         axes[0].legend(loc="best")
         axes[-1].set_xlabel(r"Time [$s$]")
         axes[-1].set_xlim([tmin, tmax])
-        plt.tight_layout(rect=[0, 0, 1, 0.97])
+        plt.tight_layout(rect=(0.0, 0.0, 1.0, 0.97))
         plt.show()

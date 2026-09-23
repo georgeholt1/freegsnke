@@ -19,6 +19,10 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+from __future__ import annotations
+
+from typing import Any
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -115,8 +119,8 @@ class PFController:
         the interpolating functions from `data`.
         """
         # check correct data is input and in correct format
-        self.keys_to_spline = []
-        self.keys_to_step = [
+        self.keys_to_spline: list[str] = []
+        self.keys_to_step: list[str] = [
             "R_matrix",
             "M_FF_matrix",
             "M_FB_matrix",
@@ -145,7 +149,7 @@ class PFController:
         """
 
         # create a dictionary to store the spline functions
-        self.interpolants = {}
+        self.interpolants: dict[str, Any] = {}
 
         # interpolate the input data
         for key in self.keys_to_step:
@@ -355,5 +359,5 @@ class PFController:
         # axes[0].legend(loc='best')
         axes[-1].set_xlabel(r"Time [$s$]")
         axes[-1].set_xlim([tmin, tmax])
-        plt.tight_layout(rect=[0, 0, 1, 0.97])
+        plt.tight_layout(rect=(0.0, 0.0, 1.0, 0.97))
         plt.show()

@@ -30,7 +30,7 @@ along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
 import abc
-from typing import Callable, Optional
+from typing import Any, Callable
 
 import numpy as np
 
@@ -98,7 +98,7 @@ class VirtualCircuitProvider(abc.ABC):
         input_data: tuple | np.ndarray,
         tikhonov_lambda: np.ndarray | None = None,
         verbose: bool = False,
-    ) -> np.ndarray | None:
+    ) -> np.ndarray:
         """
         Gets a Virtual Circuit for the given timestamp and observables requested from
         the registry.
@@ -327,7 +327,7 @@ class VCGenerator(VirtualCircuitProvider):
         targets_calc: list[str],
         coils: list[str],
         coils_calc: list[str],
-        input_data: tuple,
+        input_data: tuple | np.ndarray,
         tikhonov_lambda: np.ndarray | None = None,
         verbose: bool = False,
     ) -> np.ndarray:
@@ -453,11 +453,11 @@ class VCGenerator(VirtualCircuitProvider):
     def generate_fixed_schedule(
         self,
         times: list[float],
-        eq_list: list[object],
-        profile_list: list[object],
+        eq_list: list[Any],
+        profile_list: list[Any],
         tikhonov_lambda: np.ndarray | None = None,
         verbose: bool = False,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Generate the shape-target virtual circuit (VC) entries for a fixed
         schedule, in the format expected by the ``circuits_data`` argument of
@@ -569,7 +569,7 @@ class VCGenerator(VirtualCircuitProvider):
         # initialise: all-zero coil-coefficient arrays for every target this
         # generator supports; targets not in self.targets_ctrl are left at
         # zero (uncontrolled)
-        schedule = {
+        schedule: dict[str, Any] = {
             targ: {
                 "times": np.asarray(times, dtype=float).copy(),
                 "vals": np.zeros((n_times, n_coils)),

@@ -19,7 +19,9 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from typing import Any, Optional, Tuple
+from __future__ import annotations
+
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -230,19 +232,15 @@ class VirtualCircuitsController:
         self.update_interpolants()
 
         # storage
-        self.full_vc_matrix = []
+        self.full_vc_matrix: list[np.ndarray] = []
 
         # use if VCs class if present
         self.vc_generator = vc_generator
-        if self.vc_generator:
-            # set placeholders for most recent VCs
-            self.latest_vc_time = None
-            self.latest_vc = None
-
-            # store VCs that were used
-            self.jacobian_list = []
-            self.vc_list = []
-            self.vc_times = []
+        self.latest_vc_time: float | None = None
+        self.latest_vc: np.ndarray | None = None
+        self.jacobian_list: list[np.ndarray | None] = []
+        self.vc_list: list[np.ndarray | None] = []
+        self.vc_times: list[float] = []
 
     def update_interpolants(self) -> None:
         """
@@ -255,8 +253,8 @@ class VirtualCircuitsController:
         """
 
         # create dictionaries to store the interpolants and spline derivatives
-        self.interpolants = {}
-        self.interpolant_derivatives = {}
+        self.interpolants: dict[str, Any] = {}
+        self.interpolant_derivatives: dict[str, Any] = {}
 
         # interpolate the input data
         for key in self.keys_to_spline:
@@ -272,10 +270,10 @@ class VirtualCircuitsController:
         dip_dt: float,
         dT_dt: np.ndarray,
         I_approved_prev: np.ndarray,
-        vcg_inputs: Optional[np.ndarray] = None,
-        tikhonov_lambda: Optional[np.ndarray] = None,
+        vcg_inputs: np.ndarray | None = None,
+        tikhonov_lambda: np.ndarray | None = None,
         verbose: bool = False,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Computes the unapproved coil currents and their rates of change based on feedforward
         coil current references and virtual circuit transformations.
@@ -358,6 +356,7 @@ class VirtualCircuitsController:
                 self.latest_vc = VC_shape_new
 
             # calculate time since last VC update
+            assert self.latest_vc_time is not None
             delta_t_vc = t - self.latest_vc_time
 
             # update with new VCs if required
@@ -537,7 +536,7 @@ class VirtualCircuitsController:
         axes[0].legend(loc="best")
         axes[-1].set_xlabel(r"Time [$s$]")
         axes[-1].set_xlim([tmin, tmax])
-        plt.tight_layout(rect=[0, 0, 1, 0.97])
+        plt.tight_layout(rect=(0.0, 0.0, 1.0, 0.97))
         plt.show()
 
     def plot_data_VCs(
@@ -570,7 +569,7 @@ class VirtualCircuitsController:
         for ax, key in zip(axes, self.keys_to_step):
 
             # Assign a unique ID to each unique array
-            state_ids = []
+            state_ids: list[int] = []
 
             next_id = 1
             for arr in self.data[key]["vals"]:
@@ -581,12 +580,12 @@ class VirtualCircuitsController:
                     state_ids.append(next_id)
                     next_id += 1
 
-            state_ids = np.array(state_ids)
+            state_ids_arr = np.array(state_ids)
 
             # plot different VC times
             ax.step(
                 self.data[key]["times"],
-                state_ids,
+                state_ids_arr,
                 where="post",
                 color="navy",
                 label=key,
@@ -598,5 +597,5 @@ class VirtualCircuitsController:
 
         axes[-1].set_xlabel(r"Time [$s$]")
         axes[-1].set_xlim([tmin, tmax])
-        plt.tight_layout(rect=[0, 0, 1, 0.97])
+        plt.tight_layout(rect=(0.0, 0.0, 1.0, 0.97))
         plt.show()

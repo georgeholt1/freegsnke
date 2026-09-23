@@ -19,6 +19,10 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+from __future__ import annotations
+
+from typing import Any
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -107,8 +111,8 @@ class VerticalController:
         the interpolating functions from `data`.
         """
         # check correct data is input and in correct format
-        self.keys_to_spline = ["z_ref"]
-        self.keys_to_step = ["k_prop", "k_deriv"]
+        self.keys_to_spline: list[str] = ["z_ref"]
+        self.keys_to_step: list[str] = ["k_prop", "k_deriv"]
         for key in self.keys_to_spline + self.keys_to_step:
             check_data_entry(data=data, key=key, controller_name="VerticalController")
 
@@ -130,7 +134,7 @@ class VerticalController:
         """
 
         # create a dictionary to store the spline functions
-        self.interpolants = {}
+        self.interpolants: dict[str, Any] = {}
 
         # interpolate the input data
         for key in self.data.keys():
@@ -147,7 +151,7 @@ class VerticalController:
         ip_meas: float,
         zip_meas: float,
         zipv_meas: float,
-    ) -> float:
+    ) -> float | np.ndarray:
         """
         Compute the control signal for plasma vertical position regulation using a
         proportional-derivative (PD) control law.
@@ -278,5 +282,5 @@ class VerticalController:
         axes[0].legend(loc="best")
         axes[-1].set_xlabel(r"Time [$s$]")
         axes[-1].set_xlim([tmin, tmax])
-        plt.tight_layout(rect=[0, 0, 1, 0.97])
+        plt.tight_layout(rect=(0.0, 0.0, 1.0, 0.97))
         plt.show()

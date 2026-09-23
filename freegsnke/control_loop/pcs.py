@@ -19,8 +19,10 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-# imports
-from typing import Any, Optional, Tuple
+from __future__ import annotations
+
+import copy
+from typing import Any
 
 import numpy as np
 
@@ -108,8 +110,8 @@ class PlasmaControlSystem:
         vertical_coils: list[str],
         ctrl_targets: list[str],
         plasma_target: list[str],
-        shape_control_mode: Optional[str] = None,
-        vc_generator=None,
+        shape_control_mode: str | None = None,
+        vc_generator: Any | None = None,
     ) -> None:
         """
         Initialise the top-level control system, composing all sub-controllers.
@@ -249,12 +251,18 @@ class PlasmaControlSystem:
         zip_meas: float,
         zipv_meas: float,
         active_coil_resists: np.ndarray,
-        dt_simulator: Optional[float] = None,
-        vcg_inputs: Optional[np.ndarray] = None,
-        tikhonov_lambda: Optional[np.ndarray] = None,
+        dt_simulator: float | None = None,
+        vcg_inputs: np.ndarray | None = None,
+        tikhonov_lambda: np.ndarray | None = None,
         verbose: bool = False,
-    ) -> Tuple[
-        np.ndarray, float, float, np.ndarray, np.ndarray, np.ndarray, np.ndarray
+    ) -> tuple[
+        np.ndarray,
+        float | np.ndarray,
+        float | np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
     ]:
         """
         Run the full control pipeline to compute approved coil voltage commands.
@@ -370,8 +378,8 @@ class PlasmaControlSystem:
             )
 
             # update "history" terms
-            ip_hist_prev = ip_hist.copy()
-            ip_err_prev = ip_err.copy()
+            ip_hist_prev = copy.copy(ip_hist)
+            ip_err_prev = copy.copy(ip_err)
 
             # shape category
             self.dT_dt, T_err, T_hist = self.ShapeController.run_control(

@@ -20,6 +20,10 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+from __future__ import annotations
+
+from typing import Any
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -122,8 +126,10 @@ class CoilActivationController:
         self.active_coils = active_coils
 
         # check correct data is input and in correct format
-        self.keys_to_spline = []
-        self.keys_to_step = [coil + "_activation" for coil in self.active_coils]
+        self.keys_to_spline: list[str] = []
+        self.keys_to_step: list[str] = [
+            coil + "_activation" for coil in self.active_coils
+        ]
         for key in self.keys_to_spline + self.keys_to_step:
             check_data_entry(
                 data=data, key=key, controller_name="CoilActivationController"
@@ -147,7 +153,7 @@ class CoilActivationController:
         """
 
         # create a dictionary to store the spline functions
-        self.interpolants = {}
+        self.interpolants: dict[str, Any] = {}
 
         # interpolate the input data
         for key in self.data.keys():
@@ -314,5 +320,5 @@ class CoilActivationController:
         axes[0].legend(loc="best")
         axes[-1].set_xlabel(r"Time [$s$]")
         axes[-1].set_xlim([tmin, tmax])
-        plt.tight_layout(rect=[0, 0, 1, 0.97])
+        plt.tight_layout(rect=(0.0, 0.0, 1.0, 0.97))
         plt.show()
