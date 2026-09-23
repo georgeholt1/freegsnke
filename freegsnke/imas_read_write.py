@@ -20,7 +20,10 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+from __future__ import annotations
+
 from datetime import date
+from typing import Any
 
 import contourpy
 import imas
@@ -31,7 +34,9 @@ from scipy.interpolate import RectBivariateSpline
 import freegsnke
 
 
-def _flux_surface_geometry(eq, psi_n, fpol_1d):
+def _flux_surface_geometry(
+    eq: Any, psi_n: np.ndarray, fpol_1d: np.ndarray
+) -> dict[str, np.ndarray]:
     """
     Traces each requested normalised-flux surface once (via `contourpy`, the
     same technique used by `eq.flux_averaged_function`) and returns the
@@ -104,7 +109,12 @@ def _flux_surface_geometry(eq, psi_n, fpol_1d):
     for i, val in enumerate(psi_n):
 
         # get the coords
-        lines = [line for line in cont_gen.lines(val) if line.shape[0] > 0]
+        raw_lines: Any = cont_gen.lines(val)
+        lines = [
+            line
+            for line in raw_lines
+            if isinstance(line, np.ndarray) and line.shape[0] > 0
+        ]
         distances = [
             np.min(np.linalg.norm(line - [mag_r, mag_z], axis=1)) for line in lines
         ]
@@ -148,11 +158,11 @@ def _flux_surface_geometry(eq, psi_n, fpol_1d):
         # height (the midplane), on either side of the axis
         dz = Zc - mag_z
         crossing_indices = np.where(np.diff(np.sign(dz)) != 0)[0]
-        crossings = []
+        crossings_list = []
         for k in crossing_indices:
             f = (mag_z - Zc[k]) / (Zc[k + 1] - Zc[k])
-            crossings.append(Rc[k] + f * (Rc[k + 1] - Rc[k]))
-        crossings = np.array(crossings)
+            crossings_list.append(Rc[k] + f * (Rc[k + 1] - Rc[k]))
+        crossings = np.array(crossings_list)
         inboard = crossings[crossings < mag_r]
         outboard = crossings[crossings > mag_r]
         if inboard.size:
@@ -168,9 +178,9 @@ def _flux_surface_geometry(eq, psi_n, fpol_1d):
 
 
 def write_equilibrium_to_ids(
-    eq,
-    profiles,
-):
+    eq: Any,
+    profiles: Any,
+) -> Any:
     """
     Populates an IMAS `equilibrium` IDS (single time slice) with quantities taken
     from a solved FreeGSNKE equilibrium.
@@ -320,7 +330,7 @@ def write_equilibrium_to_ids(
     return ids_out
 
 
-def save_equilibrium_ids(ids, path):
+def save_equilibrium_ids(ids: Any, path: str) -> None:
     """
     Writes an `equilibrium` IDS to a netCDF file.
 
@@ -336,7 +346,7 @@ def save_equilibrium_ids(ids, path):
         db_entry.put(ids)
 
 
-def load_equilibrium_ids(path):
+def load_equilibrium_ids(path: str) -> Any:
     """
     Reads an `equilibrium` IDS back from a netCDF file.
 
