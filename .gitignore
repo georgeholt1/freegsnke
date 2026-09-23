@@ -57,3 +57,9 @@ examples/control_pickles/*
 freegsnke/control_loop/control_test_files/*
 .github/copilot-instructions.md
 AGENTS.md
+target/
+*.so
+.venv/
+examples/baseline_data/
+*REPORT.md
+*report.md
