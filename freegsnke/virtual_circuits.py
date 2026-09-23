@@ -24,15 +24,17 @@ from __future__ import annotations
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
-from typing import Callable
+from typing import Any, Callable
 
 import numpy as np
 from threadpoolctl import threadpool_limits
 
-_parallel_virtual_circuit_handler = None
+_parallel_virtual_circuit_handler: VirtualCircuitHandling | None = None
 
 
-def _build_shape_matrix_column_worker(arguments):
+def _build_shape_matrix_column_worker(
+    arguments: tuple[Any, ...],
+) -> tuple[int, float, np.ndarray]:
     """
     Build one virtual-circuit shape-matrix column in a worker process.
 
@@ -47,6 +49,7 @@ def _build_shape_matrix_column_worker(arguments):
     object
         The computed shape-matrix column.
     """
+    assert _parallel_virtual_circuit_handler is not None
     return _parallel_virtual_circuit_handler._build_shape_matrix_column(*arguments)
 
 
@@ -59,13 +62,13 @@ class VirtualCircuit:
     def __init__(
         self,
         name: str,
-        eq: object,
-        profiles: object,
+        eq: Any,
+        profiles: Any,
         shape_matrix: np.ndarray,
         VCs_matrix: np.ndarray,
         target_names: list[str],
         coils: list[str],
-        target_calculator: Callable[[object], np.ndarray],
+        target_calculator: Callable[[Any], np.ndarray],
     ) -> None:
         """
         Store the key quantities from the VirtualCircuitHandling calculations.
@@ -120,9 +123,10 @@ class VirtualCircuitHandling:
 
         # name to store the VC under
         self.default_VC_name = f"VC_{datetime.today().strftime('%Y%m%d')}"
+        self.latest_VC: Any = None
 
     def define_solver(
-        self, solver: object, target_relative_tolerance: float = 1e-7
+        self, solver: Any, target_relative_tolerance: float = 1e-7
     ) -> None:
         """
         Sets the solver in the VC class.
@@ -143,7 +147,7 @@ class VirtualCircuitHandling:
         self.solver = solver
         self.target_relative_tolerance = target_relative_tolerance
 
-    def build_current_vec(self, eq: object, coils: list[str]) -> None:
+    def build_current_vec(self, eq: Any, coils: list[str]) -> None:
         """
         For the given equilibrium, this function stores the coil currents
         (for those listed in 'coils') in the class object.
@@ -169,7 +173,7 @@ class VirtualCircuitHandling:
             self.currents_vec[i] = eq.tokamak[coil].current
 
     def assign_currents(
-        self, currents_vec: np.ndarray, coils: list[str], eq: object
+        self, currents_vec: np.ndarray, coils: list[str], eq: Any
     ) -> None:
         """
         For the given equilibrium, this function assigns the coil currents
@@ -531,11 +535,11 @@ class VirtualCircuitHandling:
 
     def calculate_VC(
         self,
-        eq: object,
-        profiles: object,
+        eq: Any,
+        profiles: Any,
         coils: list[str],
         target_names: list[str],
-        target_calculator: Callable[[object], np.ndarray],
+        target_calculator: Callable[[Any], np.ndarray],
         target_dIy: float = 1e-3,
         starting_dI: np.ndarray | None = None,
         min_starting_dI: float = 50,
@@ -660,7 +664,7 @@ class VirtualCircuitHandling:
         if n_vc_workers == 1:
             # for each coil, prepare by inferring delta(I_j) corresponding to a change delta(I_y)
             # with norm(delta(I_y)) = target_dIy
-            for j in np.arange(len(coils)):
+            for j in range(len(coils)):
                 self.prepare_build_dIydI_j(j, coils, target_dIy, starting_dI[j])
                 if verbose:
                     print(
@@ -675,7 +679,7 @@ class VirtualCircuitHandling:
 
             # for each coil, build the Jacobian using the value of delta(I_j) inferred earlier
             # by self.prepare_build_dIydI_j.
-            for j in np.arange(len(coils)):
+            for j in range(len(coils)):
                 # each shape matrix row is derivative of targets wrt the final coil current change
                 shape_matrix[:, j] = self.build_dIydI_j(j, coils, verbose)
         else:
@@ -690,7 +694,8 @@ class VirtualCircuitHandling:
                 starting_dI,
                 n_vc_workers,
             )
-            for j, final_dI, column in column_results:
+            for j_val, final_dI, column in column_results:
+                j = int(j_val)
                 self.final_dI_record[j] = final_dI
                 shape_matrix[:, j] = column
                 if verbose:
@@ -727,12 +732,12 @@ class VirtualCircuitHandling:
 
     def apply_VC(
         self,
-        eq: object,
-        profiles: object,
+        eq: Any,
+        profiles: Any,
         VC_object: VirtualCircuit,
-        requested_target_shifts: list[float],
+        requested_target_shifts: list[float] | np.ndarray,
         verbose: bool = False,
-    ) -> tuple[object, object, np.ndarray, np.ndarray]:
+    ) -> tuple[Any, Any, np.ndarray, np.ndarray]:
         """
         Here we apply the VC matrix V to requested shifts in the target quantities (dT),
         obtaining the shift in the currents (in coils, dI) required to achieve this:
@@ -811,7 +816,7 @@ class VirtualCircuitHandling:
             eq_new.tokamak.getCurrents()[name] + current_shifts[i]
             for i, name in enumerate(VC_object.coils)
         ]
-        self.assign_currents(new_currents, VC_object.coils, eq=eq_new)
+        self.assign_currents(np.array(new_currents), VC_object.coils, eq=eq_new)
 
         # solve for the new equilibrium
         try:

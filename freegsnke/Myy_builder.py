@@ -20,6 +20,10 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>. 
 """
 
+from __future__ import annotations
+
+from typing import Any
+
 import numpy as np
 from freegs4e.gradshafranov import Greens
 
@@ -104,7 +108,9 @@ class Myy_handler:
 
     """
 
-    def __init__(self, limiter_handler, layer_size=5, tolerance=3):
+    def __init__(
+        self, limiter_handler: Any, layer_size: int = 5, tolerance: int = 3
+    ) -> None:
         """Instantiates the object
 
         Parameters
@@ -143,7 +149,7 @@ class Myy_handler:
         self.layer_size = layer_size
         self.tolerance = tolerance
 
-    def grid_greens(self, R, Z):
+    def grid_greens(self, R: np.ndarray, Z: np.ndarray) -> np.ndarray:
         """Calculates and stores the green function values on the minimal rectangular
         region that fully encompasses the limiter. Uses that the green functions are invariant
         for vertical translations.
@@ -169,7 +175,7 @@ class Myy_handler:
 
         return 2 * np.pi * ggreens
 
-    def build_mask_from_hatIy(self, hatIy, layer_size):
+    def build_mask_from_hatIy(self, hatIy: np.ndarray, layer_size: int) -> np.ndarray:
         """Builds the mask that will be used by build_myy_from_mask
         based on the hatIy map. The mask is broadened by a number of pixels
         equal to layer mask. The limiter mask is taken into account.
@@ -189,7 +195,7 @@ class Myy_handler:
         hatIy_broad_rect_red *= self.mask_inside_limiter_red
         return hatIy_broad_rect_red
 
-    def build_Myy_from_mask(self, mask):
+    def build_Myy_from_mask(self, mask: np.ndarray) -> None:
         """Build the Myy matrix only including domain points in the input mask
 
         Parameters
@@ -218,7 +224,7 @@ class Myy_handler:
 
         self.myy = self.gg[r_idxs, r_idxs.T, dz_idxs]
 
-    def force_build_Myy(self, hatIy):
+    def force_build_Myy(self, hatIy: np.ndarray) -> None:
         """Builds the Myy matrix only including domain points in the input vector (not necessarily a mask)
 
         Parameters
@@ -232,7 +238,7 @@ class Myy_handler:
         )
         self.build_Myy_from_mask(hatIy_broad_rect_red)
 
-    def check_Myy(self, hatIy):
+    def check_Myy(self, hatIy: np.ndarray) -> Any:
         """Rebuilds myy when the input hatIy, broadened by a number of pixels
         set by tolerance, is not fully inside the current myy_mask
         Note 1. tolerance should be smaller than 'layer_size' in build_mask_from_hatIy
@@ -252,7 +258,7 @@ class Myy_handler:
         flag = np.sum(hatIy_broad_rect_red[self.outside_myy_mask])
         return flag
 
-    def dot(self, hatIy):
+    def dot(self, hatIy: np.ndarray) -> np.ndarray:
         """Performs the product with a vector defined on the reduced domain, i.e. inside the limiter.
         Returns a vector on the same domain.
 

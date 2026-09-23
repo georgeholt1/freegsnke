@@ -20,11 +20,13 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>. 
 """
 
+from __future__ import annotations
+
 import numpy as np
 from freegs4e.gradshafranov import Greens
 
 
-def Myy(plasma_pts):
+def Myy(plasma_pts: np.ndarray) -> np.ndarray:
     """
     Compute the mutual inductance matrix between plasma grid points.
 
@@ -63,7 +65,7 @@ def Myy(plasma_pts):
     return 2 * np.pi * greenm
 
 
-def grid_greens(R, Z):
+def grid_greens(R: np.ndarray, Z: np.ndarray) -> np.ndarray:
     """
     Compute the Green's function matrix for a structured (R, Z) grid.
 

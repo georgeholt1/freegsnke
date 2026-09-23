@@ -21,8 +21,11 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.   
 """
 
+from __future__ import annotations
+
 import os
 import pickle
+from typing import Any
 
 import numpy as np
 from deepdiff import DeepDiff
@@ -87,10 +90,10 @@ class Probes:
 
     def __init__(
         self,
-        coils_dict,
-        magnetic_probe_data,
-        magnetic_probe_path,
-    ):
+        coils_dict: dict[str, Any],
+        magnetic_probe_data: dict[str, Any] | None = None,
+        magnetic_probe_path: str | None = None,
+    ) -> None:
         """
         Sets up the magnetic probes object if the required data is passed to it via
         'magnetic_probe_data' or 'magnetic_probe_path'.
@@ -121,12 +124,13 @@ class Probes:
             else:
                 print("Magnetic probes --> built from user-provided data.")
 
+            assert magnetic_probe_data is not None
             self.floops = magnetic_probe_data["flux_loops"]
             self.pickups = magnetic_probe_data["pickups"]
             self.coil_names = list(coils_dict.keys())
             self.coils_dict = coils_dict
 
-    def initialise_setup(self, eq):
+    def initialise_setup(self, eq: Any) -> None:
         """
         Initialise probe geometry and precompute Green's functions for a given
         equilibrium configuration.
@@ -209,7 +213,8 @@ class Probes:
         self.pickup_order = [probe["name"] for probe in self.pickups]
 
         # # Initialise greens functions for pickups
-        self.greens_br_plasma_pickup, self.greens_bz_plasma_pickup = {}, {}
+        self.greens_br_plasma_pickup: dict[Any, Any] = {}
+        self.greens_bz_plasma_pickup: dict[Any, Any] = {}
         self.greens_br_coils_pickup, self.greens_bz_coils_pickup = (
             self.greens_BrBz_all_coils(eq, "pickups")
         )
@@ -222,7 +227,7 @@ class Probes:
             eq, "pickups"
         )
 
-    def get_coil_currents(self, eq):
+    def get_coil_currents(self, eq: Any) -> np.ndarray:
         """
         Extract coil current values from an equilibrium object in a fixed ordering.
 
@@ -256,7 +261,7 @@ class Probes:
         # could use eq.tokamak.getcurrents() instead
         return array_of_coil_currents
 
-    def get_plasma_current(self, eq):
+    def get_plasma_current(self, eq: Any) -> np.ndarray:
         """
         Extract the toroidal plasma current distribution from an equilibrium object.
 
@@ -283,7 +288,7 @@ class Probes:
         """
         return eq.limiter_handler.Iy_from_jtor(eq._profiles.jtor)
 
-    def create_eq_key(self, eq):
+    def create_eq_key(self, eq: Any) -> tuple[float, float, float, float, int, int]:
         """
         Generate a hashable identifier for an equilibrium grid configuration.
 
@@ -314,7 +319,9 @@ class Probes:
         eq_key = (eq.Rmin, eq.Rmax, eq.Zmin, eq.Zmax, nx, ny)
         return eq_key
 
-    def create_greens_psi_single_coil(self, eq, coil_key, probe="floops"):
+    def create_greens_psi_single_coil(
+        self, eq: Any, coil_key: str, probe: str = "floops"
+    ) -> np.ndarray:
         """
         Compute the Green's function contribution of a single coil to probe signals.
 
@@ -354,7 +361,7 @@ class Probes:
 
         return greens_psi_coil
 
-    def create_greens_psi_all_coils(self, eq, probe="floops"):
+    def create_greens_psi_all_coils(self, eq: Any, probe: str = "floops") -> np.ndarray:
         """
         Compute the Green's function matrix relating all coils to all probe
         locations for poloidal flux measurements.
@@ -394,7 +401,7 @@ class Probes:
             )
         return array
 
-    def psi_floop_all_coils(self, eq, probe="floops"):
+    def psi_floop_all_coils(self, eq: Any, probe: str = "floops") -> np.ndarray:
         """
         Compute the total poloidal flux at all flux loop locations due to all coils.
 
@@ -432,7 +439,7 @@ class Probes:
         # self.floop_psi = psi_from_all_coils
         return psi_from_all_coils
 
-    def create_green_psi_plasma(self, eq, probe="floops"):
+    def create_green_psi_plasma(self, eq: Any, probe: str = "floops") -> np.ndarray:
         """
         Compute the Green's function mapping plasma current density to probe
         measurements of poloidal flux ψ.
@@ -479,7 +486,7 @@ class Probes:
 
         return greens
 
-    def psi_from_plasma(self, eq, probe="floops"):
+    def psi_from_plasma(self, eq: Any, probe: str = "floops") -> np.ndarray:
         """
         Compute the contribution of plasma current to poloidal flux measurements
         at diagnostic probes.
@@ -532,7 +539,7 @@ class Probes:
         )
         return psi_from_plasma
 
-    def calculate_fluxloop_value(self, eq):
+    def calculate_fluxloop_value(self, eq: Any) -> np.ndarray:
         """
         Compute the total flux loop signals by combining coil and plasma
         contributions.
@@ -562,7 +569,9 @@ class Probes:
         """
         return self.psi_floop_all_coils(eq) + self.psi_from_plasma(eq)
 
-    def create_greens_BrBz_single_coil(self, eq, coil_key, probe="pickups"):
+    def create_greens_BrBz_single_coil(
+        self, eq: Any, coil_key: str, probe: str = "pickups"
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Compute Green's functions for the magnetic field (Br, Bz) from a single coil,
         evaluated at a set of probe locations.
@@ -600,7 +609,9 @@ class Probes:
 
         return greens_br_coil, greens_bz_coil
 
-    def greens_BrBz_all_coils(self, eq, probe="pickups"):
+    def greens_BrBz_all_coils(
+        self, eq: Any, probe: str = "pickups"
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Compute Green's function matrices for (Br, Bz) contributions from all coils
         evaluated at a set of probe locations.
@@ -638,7 +649,9 @@ class Probes:
 
         return array_r, array_z
 
-    def create_greens_B_oriented_coils(self, eq, probe="pickups"):
+    def create_greens_B_oriented_coils(
+        self, eq: Any, probe: str = "pickups"
+    ) -> np.ndarray:
         """
         Compute the directional Green's function for coils projected onto probe orientations.
 
@@ -674,7 +687,9 @@ class Probes:
 
         return prod
 
-    def BrBz_coils(self, eq, probe="pickups"):
+    def BrBz_coils(
+        self, eq: Any, probe: str = "pickups"
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Compute magnetic field components (Br, Bz) produced by all coils
         at a set of probe locations.
@@ -711,7 +726,9 @@ class Probes:
             bz_coil = np.sum(self.greens_bz_coils_pickup * coil_currents, axis=0)
         return br_coil, bz_coil
 
-    def create_greens_BrBz_plasma(self, eq, probe="pickups"):
+    def create_greens_BrBz_plasma(
+        self, eq: Any, probe: str = "pickups"
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Compute Green's functions for magnetic field components (Br, Bz)
         produced by plasma current elements and evaluated at probe locations.
@@ -771,7 +788,9 @@ class Probes:
 
         return greens_br, greens_bz
 
-    def create_greens_B_oriented_plasma(self, eq, probe="pickups"):
+    def create_greens_B_oriented_plasma(
+        self, eq: Any, probe: str = "pickups"
+    ) -> np.ndarray:
         """
         Compute the oriented Green's function for plasma current contributions
         projected onto probe directions.
@@ -812,7 +831,9 @@ class Probes:
 
         return prod
 
-    def BrBz_plasma(self, eq, probe="pickups"):
+    def BrBz_plasma(
+        self, eq: Any, probe: str = "pickups"
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Compute magnetic field components (Br, Bz) generated by plasma currents
         at a set of probe locations.
@@ -866,7 +887,7 @@ class Probes:
             bz_plasma = np.sum(greens_bz * plasma_current, axis=(0, 1))
         return br_plasma, bz_plasma
 
-    def Br(self, eq, probe="pickups"):
+    def Br(self, eq: Any, probe: str = "pickups") -> np.ndarray:
         """
         Compute the total radial magnetic field (Br) from both coils and plasma
         at a set of probe locations.
@@ -916,7 +937,7 @@ class Probes:
             br_plasma = np.sum(greens_pl * plasma_current, axis=(0))
         return br_coil + br_plasma
 
-    def Bz(self, eq, probe="pickups"):
+    def Bz(self, eq: Any, probe: str = "pickups") -> np.ndarray:
         """
         Compute the total vertical magnetic field (Bz) from both coils and plasma
         at a set of probe locations.
@@ -967,7 +988,7 @@ class Probes:
             bz_plasma = np.sum(greens_pl * plasma_current, axis=(0))
         return bz_coil + bz_plasma
 
-    def Btor(self, eq, probe="pickups"):
+    def Btor(self, eq: Any, probe: str = "pickups") -> np.ndarray:
         """
         Compute the toroidal magnetic field (Btor) at probe locations.
 
@@ -1002,7 +1023,7 @@ class Probes:
         btor = eq._profiles.fvac() / pos_R
         return btor
 
-    def calculate_pickup_value(self, eq, probe="pickups"):
+    def calculate_pickup_value(self, eq: Any, probe: str = "pickups") -> np.ndarray:
         """
         Compute the magnetic field projection (B · n) at pickup probes.
 
@@ -1058,7 +1079,14 @@ class Probes:
 
         return pickup_pol_coil + pickup_pol_pl + pickup_tor
 
-    def plot(self, axis=None, show=True, floops=True, pickups=True, pickups_scale=0.05):
+    def plot(
+        self,
+        axis: Any | None = None,
+        show: bool = True,
+        floops: bool = True,
+        pickups: bool = True,
+        pickups_scale: float = 0.05,
+    ) -> Any:
         """
         Plot magnetic diagnostic probes (fluxloops and pickup coils).
 
