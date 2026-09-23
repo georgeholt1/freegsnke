@@ -19,8 +19,11 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+from __future__ import annotations
+
 import copy
 import logging
+from typing import Any
 
 import numpy as np
 
@@ -28,8 +31,14 @@ logger = logging.getLogger(__name__)
 
 
 def copy_into(
-    obj, new_obj, attr: str, *, mutable=False, strict=True, allow_deepcopy=False
-):
+    obj: Any,
+    new_obj: Any,
+    attr: str,
+    *,
+    mutable: bool = False,
+    strict: bool = True,
+    allow_deepcopy: bool = False,
+) -> None:
     """
     Copy an attribute from one object into another.
 

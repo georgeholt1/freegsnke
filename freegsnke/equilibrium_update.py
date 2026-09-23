@@ -19,8 +19,11 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+from __future__ import annotations
+
 import os
 import pickle
+from typing import Any
 
 import freegs4e.equilibrium
 import matplotlib.pyplot as plt
@@ -36,7 +39,11 @@ from .copying import copy_into
 class Equilibrium(freegs4e.equilibrium.Equilibrium):
     """FreeGS4E equilibrium class with optional initialization."""
 
-    def __init__(self, *args, **kwargs):
+    plasma_psi: np.ndarray
+    _pgreen: dict[str, Any]
+    _vgreen: np.ndarray
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Instantiates the object."""
         super().__init__(*args, **kwargs)
 
@@ -65,26 +72,26 @@ class Equilibrium(freegs4e.equilibrium.Equilibrium):
             float
         )
 
-    def _updatePlasmaPsi(self, plasma_psi):
+    def _updatePlasmaPsi(self, plasma_psi: np.ndarray) -> None:
         """Update plasma flux while retaining the checked FreeGSNKE interpolator."""
         super()._updatePlasmaPsi(plasma_psi)
         self.psi_func_interp = self.__dict__.pop("psi_func")
 
     def update_machine_description(
         self,
-        active_coils_data=None,
-        passive_coils_data=None,
-        limiter_data=None,
-        wall_data=None,
-        magnetic_probe_data=None,
-        active_coils_path=None,
-        passive_coils_path=None,
-        limiter_path=None,
-        wall_path=None,
-        magnetic_probe_path=None,
-        refine_mode="G",
-        preserve_currents=True,
-    ):
+        active_coils_data: dict[str, Any] | None = None,
+        passive_coils_data: list[dict[str, Any]] | None = None,
+        limiter_data: list[dict[str, Any]] | None = None,
+        wall_data: list[dict[str, Any]] | None = None,
+        magnetic_probe_data: dict[str, Any] | None = None,
+        active_coils_path: str | None = None,
+        passive_coils_path: str | None = None,
+        limiter_path: str | None = None,
+        wall_path: str | None = None,
+        magnetic_probe_path: str | None = None,
+        refine_mode: str = "G",
+        preserve_currents: bool = True,
+    ) -> Equilibrium:
         """
         Update the equilibrium's tokamak directly and refresh machine-dependent caches.
 
@@ -151,7 +158,12 @@ class Equilibrium(freegs4e.equilibrium.Equilibrium):
         self.refresh_machine_dependent_state()
         return self
 
-    def update_active_coil(self, coil_name, active_coil_data, preserve_current=True):
+    def update_active_coil(
+        self,
+        coil_name: str,
+        active_coil_data: dict[str, Any],
+        preserve_current: bool = True,
+    ) -> Equilibrium:
         """
         Update one active coil/circuit and refresh equilibrium-level coil caches.
 
@@ -187,7 +199,9 @@ class Equilibrium(freegs4e.equilibrium.Equilibrium):
         self.refresh_machine_dependent_state(refresh_limiter=False)
         return self
 
-    def add_active_coil(self, coil_name, active_coil_data):
+    def add_active_coil(
+        self, coil_name: str, active_coil_data: dict[str, Any]
+    ) -> Equilibrium:
         """
         Add one new active coil/circuit and extend equilibrium-level coil caches.
 
@@ -229,7 +243,7 @@ class Equilibrium(freegs4e.equilibrium.Equilibrium):
         self.tokamak_psi = self.tokamak.calcPsiFromGreens(pgreen=self._pgreen)
         return self
 
-    def remove_active_coil(self, coil_name):
+    def remove_active_coil(self, coil_name: str) -> Equilibrium:
         """
         Remove one active coil/circuit and shrink equilibrium-level coil caches.
 
@@ -266,8 +280,12 @@ class Equilibrium(freegs4e.equilibrium.Equilibrium):
         return self
 
     def update_passive_structure(
-        self, name, passive_data, preserve_current=True, refine_mode="G"
-    ):
+        self,
+        name: str,
+        passive_data: dict[str, Any],
+        preserve_current: bool = True,
+        refine_mode: str = "G",
+    ) -> Equilibrium:
         """
         Update one passive structure and refresh equilibrium-level coil caches.
 
@@ -308,7 +326,12 @@ class Equilibrium(freegs4e.equilibrium.Equilibrium):
         self.refresh_machine_dependent_state(refresh_limiter=False)
         return self
 
-    def add_passive_structure(self, passive_data, name=None, refine_mode="G"):
+    def add_passive_structure(
+        self,
+        passive_data: dict[str, Any],
+        name: str | None = None,
+        refine_mode: str = "G",
+    ) -> Equilibrium:
         """
         Add one new passive structure and extend equilibrium-level coil caches.
 
@@ -352,7 +375,7 @@ class Equilibrium(freegs4e.equilibrium.Equilibrium):
         self.tokamak_psi = self.tokamak.calcPsiFromGreens(pgreen=self._pgreen)
         return self
 
-    def remove_passive_structure(self, name):
+    def remove_passive_structure(self, name: str) -> Equilibrium:
         """
         Remove one passive structure and shrink equilibrium-level coil caches.
 
@@ -388,7 +411,9 @@ class Equilibrium(freegs4e.equilibrium.Equilibrium):
         self.tokamak_psi = self.tokamak.calcPsiFromGreens(pgreen=self._pgreen)
         return self
 
-    def refresh_machine_dependent_state(self, refresh_limiter=True):
+    def refresh_machine_dependent_state(
+        self, refresh_limiter: bool = True
+    ) -> Equilibrium:
         """
         Refresh cached data derived from the current tokamak description.
 
@@ -425,7 +450,7 @@ class Equilibrium(freegs4e.equilibrium.Equilibrium):
             and np.shape(self._vgreen)[0] == self.tokamak.n_coils
         )
 
-        if can_update_partially:
+        if can_update_partially and changed_coils is not None:
             self._pgreen = self._pgreen.copy()
             self._vgreen = np.copy(self._vgreen)
             for label in changed_coils:
@@ -453,7 +478,7 @@ class Equilibrium(freegs4e.equilibrium.Equilibrium):
 
         return self
 
-    def create_auxiliary_equilibrium(self):
+    def create_auxiliary_equilibrium(self) -> Equilibrium:
         """Creates the auxiliary equilibrium object.
 
         The auxiliary object returned from this method is essentially
@@ -530,14 +555,15 @@ class Equilibrium(freegs4e.equilibrium.Equilibrium):
 
     def plot(
         self,
-        axis=None,
-        xpoints=True,
-        opoints=True,
-        wall=True,
-        limiter=True,
-        legend=False,
-        show=True,
-    ):
+        axis: Any | None = None,
+        xpoints: bool = True,
+        opoints: bool = True,
+        wall: bool = True,
+        limiter: bool = True,
+        legend: bool = False,
+        show: bool = True,
+        title: str | None = None,
+    ) -> Any:
         """Plot a solved FreeGSNKE equilibrium.
 
         This overrides the FreeGS4E plotting wrapper so limited equilibria
@@ -567,6 +593,8 @@ class Equilibrium(freegs4e.equilibrium.Equilibrium):
         axis.set_aspect("equal")
         axis.set_xlabel("Major radius [m]")
         axis.set_ylabel("Height [m]")
+        if title is not None:
+            axis.set_title(title)
 
         levels = np.linspace(np.amin(psi), np.amax(psi), 35)
         axis.contour(self.R, self.Z, psi, levels=levels)
@@ -646,16 +674,26 @@ class Equilibrium(freegs4e.equilibrium.Equilibrium):
 
     def adjust_psi_plasma(
         self,
-    ):
+        diff_psi_plasma: np.ndarray | None = None,
+        reinterp: bool = True,
+    ) -> None:
         """Operates an initial rescaling of the psi_plasma guess so to ensure a viable O-point
         and at least an X-point within the domain.
 
         Only use after appropriate coil currents have been set as desired!
         """
+        if diff_psi_plasma is not None:
+            self.plasma_psi = self.plasma_psi + diff_psi_plasma
+            if reinterp:
+                self.psi_func_interp = interpolate.RectBivariateSpline(
+                    self.R[:, 0], self.Z[0, :], self.plasma_psi
+                )
+            return
+
         self.tokamak_psi = self.tokamak.calcPsiFromGreens(pgreen=self._pgreen)
 
         n_up = 0
-        self.gmod = 0
+        self.gmod = 0.0
         self.gexp = 2
         opoint_flag = False
         while (n_up < 10) and (opoint_flag == False):
@@ -760,7 +798,7 @@ class Equilibrium(freegs4e.equilibrium.Equilibrium):
 
         self.plasma_psi = n_plasma_psi.copy()
 
-    def psi_func(self, R, Z, *args, **kwargs):
+    def psi_func(self, R: Any, Z: Any, *args: Any, **kwargs: Any) -> Any:
         """Scipy interpolation of plasma_psi function.
         Replaces the original FreeGS interpolation.
         It now includes a check which leads to the update of the interpolation when needed.
@@ -795,7 +833,7 @@ class Equilibrium(freegs4e.equilibrium.Equilibrium):
 
         return self.psi_func_interp(R, Z, *args, **kwargs)
 
-    def initialize_from_equilibrium(self):
+    def initialize_from_equilibrium(self) -> None:
         """
         This function loads a pickle file containing an initial guess for the plasma
         flux (and the corners of the grid points it is located on).
@@ -812,6 +850,8 @@ class Equilibrium(freegs4e.equilibrium.Equilibrium):
         """
 
         # load the data from the pickle file
+        if self.equilibrium_path is None:
+            raise ValueError("EQUILIBRIUM_PATH environment variable is not set.")
         with open(self.equilibrium_path, "rb") as f:
             data = pickle.load(f)
 

@@ -19,6 +19,10 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+from __future__ import annotations
+
+from typing import Any
+
 import numpy as np
 
 from .copying import copy_into
@@ -40,7 +44,7 @@ class Jtor_refiner:
     increasing grid resolution.
     """
 
-    def __init__(self, eq, nnx, nny):
+    def __init__(self, eq: Any, nnx: int, nny: int) -> None:
         """
         Initialise the Jtor refiner and precompute geometric and indexing data.
 
@@ -82,7 +86,7 @@ class Jtor_refiner:
         self.edges_mask[-1, :] = 0
         self.edges_mask[:, -1] = 0
 
-    def copy(self):
+    def copy(self) -> Jtor_refiner:
         """
         Create a deep copy of the Jtor_refiner object.
 
@@ -129,7 +133,7 @@ class Jtor_refiner:
 
     def prepare_for_refinement(
         self,
-    ):
+    ) -> None:
         """
         Precompute geometric, interpolation, and masking structures used in Jtor refinement.
 
@@ -212,7 +216,9 @@ class Jtor_refiner:
         quartermasks[:, :, 0] = (srr >= (self.nnx / 2)) * (szz >= (self.nny / 2))
         self.quartermasks = quartermasks
 
-    def get_indexes_for_refinement(self, mask_to_refine):
+    def get_indexes_for_refinement(
+        self, mask_to_refine: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Construct index arrays for bilinear interpolation on refined cells.
 
@@ -404,7 +410,12 @@ class Jtor_refiner:
 
         return RRidxs, ZZidxs
 
-    def build_jtor_value_mask(self, unrefined_jtor, threshold, quantiles=(0.5, 0.9)):
+    def build_jtor_value_mask(
+        self,
+        unrefined_jtor: np.ndarray,
+        threshold: float,
+        quantiles: tuple[float, float] = (0.5, 0.9),
+    ) -> np.ndarray:
         """
         Construct a refinement mask based on the magnitude of Jtor.
 
@@ -434,7 +445,12 @@ class Jtor_refiner:
         )
         return mask
 
-    def build_jtor_gradient_mask(self, unrefined_jtor, threshold, quantiles=(0.5, 0.9)):
+    def build_jtor_gradient_mask(
+        self,
+        unrefined_jtor: np.ndarray,
+        threshold: float,
+        quantiles: tuple[float, float] = (0.5, 0.9),
+    ) -> np.ndarray:
         """
         Construct a refinement mask based on local finite-difference variations of Jtor.
 
@@ -482,7 +498,7 @@ class Jtor_refiner:
 
         return gradient_mask > 0
 
-    def build_LCFS_mask(self, core_mask):
+    def build_LCFS_mask(self, core_mask: np.ndarray) -> np.ndarray:
         """
         Construct a refinement mask identifying grid points adjacent to the LCFS.
 
@@ -531,7 +547,12 @@ class Jtor_refiner:
         # lcfs_mask[:, 2:] += up_mask[:,:-1]
         return lcfs_mask
 
-    def build_mask_to_refine(self, unrefined_jtor, core_mask, thresholds):
+    def build_mask_to_refine(
+        self,
+        unrefined_jtor: np.ndarray,
+        core_mask: np.ndarray,
+        thresholds: tuple[float, float],
+    ) -> None:
         """
         Construct the global refinement mask combining LCFS location,
         Jtor magnitude, and Jtor gradient criteria.
@@ -594,7 +615,13 @@ class Jtor_refiner:
         # make bool mask
         self.mask_to_refine = mask_to_refine.astype(bool)
 
-    def build_bilinear_psi_interp(self, psi, core_mask, unrefined_jtor, thresholds):
+    def build_bilinear_psi_interp(
+        self,
+        psi: np.ndarray,
+        core_mask: np.ndarray,
+        unrefined_jtor: np.ndarray,
+        thresholds: tuple[float, float],
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Construct a refined representation of the poloidal flux `psi` on a
         sub-grid using bilinear interpolation in selected refinement cells.
@@ -677,7 +704,9 @@ class Jtor_refiner:
 
         return format_bilinear_psi, refined_R
 
-    def build_from_refined_jtor(self, unrefined_jtor, refined_jtor):
+    def build_from_refined_jtor(
+        self, unrefined_jtor: np.ndarray, refined_jtor: np.ndarray
+    ) -> np.ndarray:
         """
         Reconstruct a coarse-grid Jtor field by averaging refined sub-grid values
         back onto the original (nx, ny) mesh.
@@ -726,3 +755,6 @@ class Jtor_refiner:
         )
 
         return jtor
+
+
+jtor_refinement = Jtor_refiner

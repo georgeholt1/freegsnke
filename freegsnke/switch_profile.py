@@ -20,19 +20,23 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.   
 """
 
+from __future__ import annotations
+
+from typing import Any
+
 import numpy as np
 
 
 def Lao_parameters_finder(
-    pn_,
-    pprime_,
-    ffprime_,
-    n_alpha,
-    n_beta,
-    alpha_logic=True,
-    beta_logic=True,
-    Ip_logic=True,
-):
+    pn_: np.ndarray,
+    pprime_: np.ndarray,
+    ffprime_: np.ndarray,
+    n_alpha: int,
+    n_beta: int,
+    alpha_logic: bool = True,
+    beta_logic: bool = True,
+    Ip_logic: bool = True,
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Fit Lao85 profile coefficients to prescribed pprime and ffprime profiles.
 
@@ -106,7 +110,9 @@ def Lao_parameters_finder(
     return alpha, beta
 
 
-def Topeol_std(x, alpha_m, alpha_n, beta_0):
+def Topeol_std(
+    x: np.ndarray, alpha_m: float, alpha_n: float, beta_0: float
+) -> np.ndarray:
     """
     Evaluate the standard Topeol profile.
 
@@ -139,7 +145,14 @@ def Topeol_std(x, alpha_m, alpha_n, beta_0):
     return (1 - x**alpha_m) ** alpha_n
 
 
-def d2Ldb2(t, x, alpha_m, alpha_n, beta_0, Tstd=None):
+def d2Ldb2(
+    t: np.ndarray,
+    x: np.ndarray,
+    alpha_m: float,
+    alpha_n: float,
+    beta_0: float,
+    Tstd: np.ndarray | None = None,
+) -> np.ndarray:
     """
     Evaluate the second derivative of the loss function with respect to
     beta_0.
@@ -183,7 +196,14 @@ def d2Ldb2(t, x, alpha_m, alpha_n, beta_0, Tstd=None):
     return res
 
 
-def d2Ldbdn(t, x, alpha_m, alpha_n, beta_0, Tstd=None):
+def d2Ldbdn(
+    t: np.ndarray,
+    x: np.ndarray,
+    alpha_m: float,
+    alpha_n: float,
+    beta_0: float,
+    Tstd: np.ndarray | None = None,
+) -> np.ndarray:
     """
     Evaluate the mixed second derivative of the loss function with respect to
     beta_0 and alpha_n.
@@ -234,7 +254,14 @@ def d2Ldbdn(t, x, alpha_m, alpha_n, beta_0, Tstd=None):
     return res
 
 
-def d2Ldbdm(t, x, alpha_m, alpha_n, beta_0, Tstd=None):
+def d2Ldbdm(
+    t: np.ndarray,
+    x: np.ndarray,
+    alpha_m: float,
+    alpha_n: float,
+    beta_0: float,
+    Tstd: np.ndarray | None = None,
+) -> np.ndarray:
     """
     Evaluate the mixed second derivative of the loss function with respect to
     beta_0 and alpha_m.
@@ -287,7 +314,14 @@ def d2Ldbdm(t, x, alpha_m, alpha_n, beta_0, Tstd=None):
     return res
 
 
-def d2Ldm2(t, x, alpha_m, alpha_n, beta_0, Tstd=None):
+def d2Ldm2(
+    t: np.ndarray,
+    x: np.ndarray,
+    alpha_m: float,
+    alpha_n: float,
+    beta_0: float,
+    Tstd: np.ndarray | None = None,
+) -> np.ndarray:
     """
     Evaluate the second derivative of the loss function with respect to
     alpha_m.
@@ -341,7 +375,14 @@ def d2Ldm2(t, x, alpha_m, alpha_n, beta_0, Tstd=None):
     return res
 
 
-def d2Ldn2(t, x, alpha_m, alpha_n, beta_0, Tstd=None):
+def d2Ldn2(
+    t: np.ndarray,
+    x: np.ndarray,
+    alpha_m: float,
+    alpha_n: float,
+    beta_0: float,
+    Tstd: np.ndarray | None = None,
+) -> np.ndarray:
     """
     Evaluate the second derivative of the loss function with respect to
     alpha_n.
@@ -394,7 +435,14 @@ def d2Ldn2(t, x, alpha_m, alpha_n, beta_0, Tstd=None):
     return res
 
 
-def d2Ldmdn(t, x, alpha_m, alpha_n, beta_0, Tstd=None):
+def d2Ldmdn(
+    t: np.ndarray,
+    x: np.ndarray,
+    alpha_m: float,
+    alpha_n: float,
+    beta_0: float,
+    Tstd: np.ndarray | None = None,
+) -> np.ndarray:
     """
     Evaluate the mixed second derivative of the loss function with respect to
     alpha_m and alpha_n.
@@ -450,7 +498,14 @@ def d2Ldmdn(t, x, alpha_m, alpha_n, beta_0, Tstd=None):
     return res
 
 
-def dLdn(t, x, alpha_m, alpha_n, beta_0, Tstd=None):
+def dLdn(
+    t: np.ndarray,
+    x: np.ndarray,
+    alpha_m: float,
+    alpha_n: float,
+    beta_0: float,
+    Tstd: np.ndarray | None = None,
+) -> np.ndarray:
     """
     Evaluate the first derivative of the loss function with respect to
     alpha_n.
@@ -502,7 +557,14 @@ def dLdn(t, x, alpha_m, alpha_n, beta_0, Tstd=None):
     return res
 
 
-def dLdm(t, x, alpha_m, alpha_n, beta_0, Tstd=None):
+def dLdm(
+    t: np.ndarray,
+    x: np.ndarray,
+    alpha_m: float,
+    alpha_n: float,
+    beta_0: float,
+    Tstd: np.ndarray | None = None,
+) -> np.ndarray:
     """
     Evaluate the first derivative of the loss function with respect to
     alpha_m.
@@ -555,7 +617,14 @@ def dLdm(t, x, alpha_m, alpha_n, beta_0, Tstd=None):
     return res
 
 
-def dLdb(t, x, alpha_m, alpha_n, beta_0, Tstd=None):
+def dLdb(
+    t: np.ndarray,
+    x: np.ndarray,
+    alpha_m: float,
+    alpha_n: float,
+    beta_0: float,
+    Tstd: np.ndarray | None = None,
+) -> np.ndarray:
     """
     Evaluate the first derivative of the loss function with respect to
     beta_0.
@@ -604,7 +673,15 @@ def dLdb(t, x, alpha_m, alpha_n, beta_0, Tstd=None):
     return res
 
 
-def dLdpars(tp, tf, x, alpha_m, alpha_n, beta_0, Tstd=None):
+def dLdpars(
+    tp: np.ndarray,
+    tf: np.ndarray,
+    x: np.ndarray,
+    alpha_m: float,
+    alpha_n: float,
+    beta_0: float,
+    Tstd: np.ndarray | None = None,
+) -> np.ndarray:
     """
     Compute the gradient of the total loss with respect to the model parameters.
 
@@ -665,7 +742,15 @@ def dLdpars(tp, tf, x, alpha_m, alpha_n, beta_0, Tstd=None):
     return dLpdpars + dLfdpars
 
 
-def d2Ldpars2(tp, tf, x, alpha_m, alpha_n, beta_0, Tstd=None):
+def d2Ldpars2(
+    tp: np.ndarray,
+    tf: np.ndarray,
+    x: np.ndarray,
+    alpha_m: float,
+    alpha_n: float,
+    beta_0: float,
+    Tstd: np.ndarray | None = None,
+) -> np.ndarray:
     """
     Compute the Hessian matrix of the total loss with respect to the model parameters.
 
@@ -743,7 +828,15 @@ def d2Ldpars2(tp, tf, x, alpha_m, alpha_n, beta_0, Tstd=None):
     return d2Lpdpars2 + d2Lfdpars2
 
 
-def Lpars(tp, tf, x, alpha_m, alpha_n, beta_0, Tstd=None):
+def Lpars(
+    tp: np.ndarray,
+    tf: np.ndarray,
+    x: np.ndarray,
+    alpha_m: float,
+    alpha_n: float,
+    beta_0: float,
+    Tstd: np.ndarray | None = None,
+) -> float:
     """
     Compute the total loss for the parameterised Topeol model.
 
@@ -793,7 +886,10 @@ def Lpars(tp, tf, x, alpha_m, alpha_n, beta_0, Tstd=None):
     return np.sum(Lp + Lf, axis=0)
 
 
-def Topeol_opt_init(tp, tf):
+def Topeol_opt_init(
+    tp: np.ndarray,
+    tf: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, float]:
     """
     Compute an initial guess for Topeol model scaling and amplitude split.
 
@@ -854,7 +950,12 @@ def Topeol_opt_init(tp, tf):
     return tpn, tfn, b0
 
 
-def Topeol_opt_stepper(tp, tf, x, pars):
+def Topeol_opt_stepper(
+    tp: np.ndarray,
+    tf: np.ndarray,
+    x: np.ndarray,
+    pars: np.ndarray,
+) -> np.ndarray:
     """
     Perform one optimisation step for the Topeol parameter fit.
 
@@ -925,7 +1026,13 @@ def Topeol_opt_stepper(tp, tf, x, pars):
     return pars + dpars
 
 
-def Topeol_opt(tp, tf, x, max_it, tol):
+def Topeol_opt(
+    tp: np.ndarray,
+    tf: np.ndarray,
+    x: np.ndarray,
+    max_it: int,
+    tol: float,
+) -> np.ndarray:
     """
     Optimise Topeol model parameters using an iterative stepper.
 

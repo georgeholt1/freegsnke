@@ -19,6 +19,10 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+from __future__ import annotations
+
+from typing import Any, Callable
+
 import freegs4e.jtor
 import numpy as np
 from freegs4e.gradshafranov import mu0
@@ -47,11 +51,19 @@ class Jtor_universal:
     to know which implementation is being used.
     """
 
-    def __init__(self, refine_jtor=False):
+    Ip: float
+    Ip_logic: bool
+    Jtor_part1: Callable[..., Any]
+    Jtor_part2: Callable[..., Any]
+    psi_axis: float
+    dJtordpsi: np.ndarray
+    L: float
+
+    def __init__(self, refine_jtor: bool = False) -> None:
         """Sets default unrefined Jtor."""
         self._refine_jtor = refine_jtor
 
-    def Jtor(self, *args, **kwargs):
+    def Jtor(self, *args: Any, **kwargs: Any) -> np.ndarray:
         """
         Evaluate toroidal current density (Jtor), dispatching to either the
         refined or unrefined implementation.
@@ -75,7 +87,7 @@ class Jtor_universal:
         else:
             return self.Jtor_unrefined(*args, **kwargs)
 
-    def copy(self, obj=None):
+    def copy(self, obj: Any | None = None) -> Any:
         """
         Create a copy of the current Jtor_universal instance.
 
@@ -170,7 +182,7 @@ class Jtor_universal:
 
         return obj
 
-    def set_masks(self, eq):
+    def set_masks(self, eq: Any) -> None:
         """
         Initialise grid geometry and limiter-related masks from an equilibrium object.
 
@@ -203,7 +215,13 @@ class Jtor_universal:
         self.mask_outside_limiter = self.limiter_handler.mask_outside_limiter
         self.limiter_mask_out = self.limiter_handler.limiter_mask_out
 
-    def select_refinement(self, eq, refine_jtor, nnx, nny):
+    def select_refinement(
+        self,
+        eq: Any,
+        refine_jtor: bool,
+        nnx: int | None,
+        nny: int | None,
+    ) -> None:
         """
         Initialise optional subgrid refinement for toroidal current density (jtor).
 
@@ -229,10 +247,14 @@ class Jtor_universal:
         """
         self._refine_jtor = refine_jtor
         if refine_jtor:
+            assert nnx is not None and nny is not None
             self.jtor_refiner = jtor_refinement.Jtor_refiner(eq, nnx, nny)
             self.set_refinement_thresholds()
 
-    def set_refinement_thresholds(self, thresholds=(1.0, 1.0)):
+    def set_refinement_thresholds(
+        self,
+        thresholds: tuple[float, float] = (1.0, 1.0),
+    ) -> None:
         """
         Set the criteria used to control jtor subgrid refinement.
 
@@ -253,14 +275,14 @@ class Jtor_universal:
 
     def diverted_critical(
         self,
-        R,
-        Z,
-        psi,
-        psi_bndry=None,
-        mask_outside_limiter=None,
-        rel_tolerance_xpt=1e-10,
-        starting_dx=0.05,
-    ):
+        R: np.ndarray,
+        Z: np.ndarray,
+        psi: np.ndarray,
+        psi_bndry: float | None = None,
+        mask_outside_limiter: np.ndarray | None = None,
+        rel_tolerance_xpt: float = 1e-10,
+        starting_dx: float = 0.05,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, float]:
         """
         Compute LCFS, O-point, X-point, and core mask using a contour-based fallback algorithm.
 
@@ -351,7 +373,7 @@ class Jtor_universal:
             while region_found is False:
                 idx += 1
                 path = Path(all_regions[regions_order[idx]])
-                region_found = path.contains_point(idx_valid_max)
+                region_found = path.contains_point((idx_valid_max[0], idx_valid_max[1]))
             # check if any excluded points have been included
             check_larger = np.any(path.contains_points(idx_excluded_max.astype(float)))
             if check_larger == desired_check_larger:
@@ -391,14 +413,14 @@ class Jtor_universal:
 
     def diverted_critical_complete(
         self,
-        R,
-        Z,
-        psi,
-        psi_bndry=None,
-        mask_outside_limiter=None,
-        rel_tolerance_xpt=1e-4,
-        starting_dx=0.05,
-    ):
+        R: np.ndarray,
+        Z: np.ndarray,
+        psi: np.ndarray,
+        psi_bndry: float | None = None,
+        mask_outside_limiter: np.ndarray | None = None,
+        rel_tolerance_xpt: float = 1e-4,
+        starting_dx: float = 0.05,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, float]:
         """
         Robust LCFS, O-point, X-point, and core mask detection with fallback logic.
 
@@ -455,16 +477,24 @@ class Jtor_universal:
 
     def Jtor_build(
         self,
-        Jtor_part1,
-        Jtor_part2,
-        core_mask_limiter,
-        R,
-        Z,
-        psi,
-        psi_bndry,
-        mask_outside_limiter,
-        limiter_mask_out,
-    ):
+        Jtor_part1: Callable[..., Any],
+        Jtor_part2: Callable[..., Any],
+        core_mask_limiter: Callable[..., Any],
+        R: np.ndarray,
+        Z: np.ndarray,
+        psi: np.ndarray,
+        psi_bndry: float | None,
+        mask_outside_limiter: np.ndarray | None,
+        limiter_mask_out: np.ndarray,
+    ) -> tuple[
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        float,
+        np.ndarray,
+        np.ndarray,
+        bool | int,
+    ]:
         """
         Construct the toroidal current density (Jtor) using a modular profile pipeline.
 
@@ -558,7 +588,13 @@ class Jtor_universal:
             flag_limiter,
         )
 
-    def Jtor_unrefined(self, R, Z, psi, psi_bndry=None):
+    def Jtor_unrefined(
+        self,
+        R: np.ndarray,
+        Z: np.ndarray,
+        psi: np.ndarray,
+        psi_bndry: float | None = None,
+    ) -> np.ndarray:
         """
         Compute the toroidal current density without subgrid refinement.
 
@@ -604,7 +640,14 @@ class Jtor_universal:
         )
         return self.jtor
 
-    def Jtor_refined(self, R, Z, psi, psi_bndry=None, thresholds=None):
+    def Jtor_refined(
+        self,
+        R: np.ndarray,
+        Z: np.ndarray,
+        psi: np.ndarray,
+        psi_bndry: float | None = None,
+        thresholds: tuple[float, float] | None = None,
+    ) -> np.ndarray:
         """
         Compute toroidal current density using subgrid refinement.
 
@@ -660,7 +703,7 @@ class Jtor_universal:
         refined_jtor = refined_jtor.reshape(
             -1, self.jtor_refiner.nnx, self.jtor_refiner.nny
         )
-        self.dJtordpsi = self.jtor_refiner.build_from_refined_jtor(
+        self.dJtordpsi = self.jtor_refiner.build_from_refined_jtor(  # type: ignore[call-arg]
             self.pure_djtordpsi,
             self.dJtordpsi.reshape(-1),
             self.jtor_refiner.nnx,
@@ -686,7 +729,7 @@ class ConstrainBetapIp(freegs4e.jtor.ConstrainBetapIp, Jtor_universal):
 
     Jtor = Jtor_universal.Jtor
 
-    def __init__(self, eq, *args, **kwargs):
+    def __init__(self, eq: Any, *args: Any, **kwargs: Any) -> None:
         """
         Initialise the constrained profile.
 
@@ -704,7 +747,7 @@ class ConstrainBetapIp(freegs4e.jtor.ConstrainBetapIp, Jtor_universal):
 
         self.set_masks(eq=eq)
 
-    def copy(self):
+    def copy(self) -> Any:  # type: ignore[override]
         """
         Create a deep-ish copy of the profile object.
 
@@ -730,8 +773,14 @@ class ConstrainBetapIp(freegs4e.jtor.ConstrainBetapIp, Jtor_universal):
         return obj
 
     def Lao_parameters(
-        self, n_alpha, n_beta, alpha_logic=True, beta_logic=True, Ip_logic=True, nn=100
-    ):
+        self,
+        n_alpha: int,
+        n_beta: int,
+        alpha_logic: bool = True,
+        beta_logic: bool = True,
+        Ip_logic: bool = True,
+        nn: int = 100,
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Fit Lao85 profile parameters to the current pprime and ffprime profiles.
 
@@ -788,7 +837,7 @@ class ConstrainPaxisIp(freegs4e.jtor.ConstrainPaxisIp, Jtor_universal):
 
     Jtor = Jtor_universal.Jtor
 
-    def __init__(self, eq, *args, **kwargs):
+    def __init__(self, eq: Any, *args: Any, **kwargs: Any) -> None:
         """
         Initialise the constrained profile.
 
@@ -806,7 +855,7 @@ class ConstrainPaxisIp(freegs4e.jtor.ConstrainPaxisIp, Jtor_universal):
 
         self.set_masks(eq=eq)
 
-    def copy(self):
+    def copy(self) -> Any:  # type: ignore[override]
         """
         Create a copy of the current profile instance.
 
@@ -833,8 +882,14 @@ class ConstrainPaxisIp(freegs4e.jtor.ConstrainPaxisIp, Jtor_universal):
         return obj
 
     def Lao_parameters(
-        self, n_alpha, n_beta, alpha_logic=True, beta_logic=True, Ip_logic=True, nn=100
-    ):
+        self,
+        n_alpha: int,
+        n_beta: int,
+        alpha_logic: bool = True,
+        beta_logic: bool = True,
+        Ip_logic: bool = True,
+        nn: int = 100,
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Fit Lao85 profile coefficients from pprime and ffprime evaluations.
 
@@ -892,7 +947,7 @@ class Fiesta_Topeol(freegs4e.jtor.Fiesta_Topeol, Jtor_universal):
 
     Jtor = Jtor_universal.Jtor
 
-    def __init__(self, eq, *args, **kwargs):
+    def __init__(self, eq: Any, *args: Any, **kwargs: Any) -> None:
         """
         Initialise the Fiesta-Topeol constrained current profile.
 
@@ -910,7 +965,7 @@ class Fiesta_Topeol(freegs4e.jtor.Fiesta_Topeol, Jtor_universal):
 
         self.set_masks(eq=eq)
 
-    def copy(self):
+    def copy(self) -> Any:  # type: ignore[override]
         """
         Create a copy of the Fiesta-Topeol profile instance.
 
@@ -935,8 +990,14 @@ class Fiesta_Topeol(freegs4e.jtor.Fiesta_Topeol, Jtor_universal):
         return obj
 
     def Lao_parameters(
-        self, n_alpha, n_beta, alpha_logic=True, beta_logic=True, Ip_logic=True, nn=100
-    ):
+        self,
+        n_alpha: int,
+        n_beta: int,
+        alpha_logic: bool = True,
+        beta_logic: bool = True,
+        Ip_logic: bool = True,
+        nn: int = 100,
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Fit Lao85 profile coefficients from sampled pprime and ffprime data.
 
@@ -994,7 +1055,15 @@ class Lao85(freegs4e.jtor.Lao85, Jtor_universal):
 
     Jtor = Jtor_universal.Jtor
 
-    def __init__(self, eq, *args, refine_jtor=False, nnx=None, nny=None, **kwargs):
+    def __init__(
+        self,
+        eq: Any,
+        *args: Any,
+        refine_jtor: bool = False,
+        nnx: int | None = None,
+        nny: int | None = None,
+        **kwargs: Any,
+    ) -> None:
         """
         Initialise the Lao85 current profile.
 
@@ -1013,7 +1082,7 @@ class Lao85(freegs4e.jtor.Lao85, Jtor_universal):
         self.set_masks(eq=eq)
         self.select_refinement(eq, refine_jtor, nnx, nny)
 
-    def copy(self):
+    def copy(self) -> Any:  # type: ignore[override]
         """
         Create a copy of the Lao85 profile instance.
 
@@ -1043,7 +1112,12 @@ class Lao85(freegs4e.jtor.Lao85, Jtor_universal):
 
         return obj
 
-    def Topeol_parameters(self, nn=100, max_it=100, tol=1e-5):
+    def Topeol_parameters(
+        self,
+        nn: int = 100,
+        max_it: int = 100,
+        tol: float = 1e-5,
+    ) -> np.ndarray:
         """
         Fit optimal Topeol profile parameters from target pprime and ffprime data.
 
@@ -1090,7 +1164,7 @@ class TensionSpline(freegs4e.jtor.TensionSpline, Jtor_universal):
 
     Jtor = Jtor_universal.Jtor
 
-    def __init__(self, eq, *args, **kwargs):
+    def __init__(self, eq: Any, *args: Any, **kwargs: Any) -> None:
         """
         Initialise the tension spline current profile.
 
@@ -1116,7 +1190,7 @@ class TensionSpline(freegs4e.jtor.TensionSpline, Jtor_universal):
 
         self.set_masks(eq=eq)
 
-    def copy(self):
+    def copy(self) -> Any:  # type: ignore[override]
         """
         Create a copy of the TensionSpline profile instance.
 
@@ -1158,15 +1232,15 @@ class TensionSpline(freegs4e.jtor.TensionSpline, Jtor_universal):
 
     def assign_profile_parameter(
         self,
-        pp_knots,
-        pp_values,
-        pp_values_2,
-        pp_sigma,
-        ffp_knots,
-        ffp_values,
-        ffp_values_2,
-        ffp_sigma,
-    ):
+        pp_knots: np.ndarray,
+        pp_values: np.ndarray,
+        pp_values_2: np.ndarray,
+        pp_sigma: float | np.ndarray,
+        ffp_knots: np.ndarray,
+        ffp_values: np.ndarray,
+        ffp_values_2: np.ndarray,
+        ffp_sigma: float | np.ndarray,
+    ) -> None:
         """
         Assign new spline parameters to the profile object.
 
@@ -1218,7 +1292,7 @@ class GeneralPprimeFFprime(freegs4e.jtor.GeneralPprimeFFprime, Jtor_universal):
 
     Jtor = Jtor_universal.Jtor
 
-    def __init__(self, eq, *args, **kwargs):
+    def __init__(self, eq: Any, *args: Any, **kwargs: Any) -> None:
         """
         Initialise the general pprime/ffprime current profile.
 
@@ -1231,10 +1305,10 @@ class GeneralPprimeFFprime(freegs4e.jtor.GeneralPprimeFFprime, Jtor_universal):
         freegs4e.jtor.GeneralPprimeFFprime.__init__(self, *args, **kwargs)
         Jtor_universal.__init__(self)
 
-        self.profile_parameter = []
+        self.profile_parameter: list[Any] = []
         self.set_masks(eq=eq)
 
-    def copy(self):
+    def copy(self) -> Any:  # type: ignore[override]
         """
         Create a copy of the GeneralPprimeFFprime profile instance.
 
@@ -1264,9 +1338,7 @@ class GeneralPprimeFFprime(freegs4e.jtor.GeneralPprimeFFprime, Jtor_universal):
 
         return obj
 
-    def assign_profile_parameter(
-        self,
-    ):
+    def assign_profile_parameter(self) -> None:
         """
         Reset profile parameter container.
 
