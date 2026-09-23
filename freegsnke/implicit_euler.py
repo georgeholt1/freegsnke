@@ -19,13 +19,15 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.  
 """
 
+from __future__ import annotations
+
 import math
 
 import numpy as np
 
 
 class implicit_euler_solver:
-    """An implicit Euler time stepper for the linearized circuit equations. Solves an equation of type
+    r"""An implicit Euler time stepper for the linearized circuit equations. Solves an equation of type
 
     $$M\dot{I} + RI = F$$,
 
@@ -40,7 +42,24 @@ class implicit_euler_solver:
     with M != L
     """
 
-    def __init__(self, Mmatrix, Rmatrix, full_timestep, max_internal_timestep):
+    Mmatrix: np.ndarray
+    Lmatrix: np.ndarray
+    Rmatrix: np.ndarray
+    dims: int
+    empty_U: np.ndarray
+    full_timestep: float
+    max_internal_timestep: float
+    n_steps: int
+    internal_timestep: float
+    inverse_operator: np.ndarray
+
+    def __init__(
+        self,
+        Mmatrix: np.ndarray,
+        Rmatrix: np.ndarray,
+        full_timestep: float,
+        max_internal_timestep: float,
+    ) -> None:
         """Sets up the implicit euler solver
 
         Parameters
@@ -62,7 +81,7 @@ class implicit_euler_solver:
         self.set_timesteps(full_timestep, max_internal_timestep)
         self.empty_U = np.zeros(self.dims)  # dummy voltage vector
 
-    def set_Mmatrix(self, Mmatrix):
+    def set_Mmatrix(self, Mmatrix: np.ndarray) -> None:
         """Updates the mutual inductance matrix.
 
         Parameters
@@ -72,7 +91,7 @@ class implicit_euler_solver:
         """
         self.Mmatrix = Mmatrix
 
-    def set_Lmatrix(self, Lmatrix):
+    def set_Lmatrix(self, Lmatrix: np.ndarray) -> None:
         """Set a separate mutual inductance matrix L != M.
 
         Parameters
@@ -82,7 +101,7 @@ class implicit_euler_solver:
         """
         self.Lmatrix = Lmatrix
 
-    def set_Rmatrix(self, Rmatrix):
+    def set_Rmatrix(self, Rmatrix: np.ndarray) -> None:
         """Updates the resistance matrix.
 
         Parameters
@@ -92,7 +111,7 @@ class implicit_euler_solver:
         """
         self.Rmatrix = Rmatrix
 
-    def calc_inverse_operator(self):
+    def calc_inverse_operator(self) -> None:
         """Calculates the inverse operator (M + Rdt)^-1
         Note this needs done when M or R are updated
         """
@@ -100,7 +119,7 @@ class implicit_euler_solver:
             self.Mmatrix + self.internal_timestep * self.Rmatrix
         )
 
-    def set_timesteps(self, full_timestep, max_internal_timestep):
+    def set_timesteps(self, full_timestep: float, max_internal_timestep: float) -> None:
         """Sets the timesteps for the stepper and (re)calculate the inverse operator
 
         Parameters
@@ -117,7 +136,7 @@ class implicit_euler_solver:
         self.internal_timestep = self.full_timestep / self.n_steps
         self.calc_inverse_operator()
 
-    def internal_stepper(self, It, dtforcing):
+    def internal_stepper(self, It: np.ndarray, dtforcing: np.ndarray) -> np.ndarray:
         """Calculates the next internal timestep I(t + internal_timestep)
 
         Parameters
@@ -131,7 +150,7 @@ class implicit_euler_solver:
         Itpdt = np.dot(self.inverse_operator, dtforcing + np.dot(self.Lmatrix, It))
         return Itpdt
 
-    def full_stepper(self, It, forcing):
+    def full_stepper(self, It: np.ndarray, forcing: np.ndarray) -> np.ndarray:
         """Calculates the next full timestep I(t + `self.full_timestep`) by repeatedly
         solving for the internal timestep I(t + `self.internal_timestep`) for `self.n_steps` steps
 

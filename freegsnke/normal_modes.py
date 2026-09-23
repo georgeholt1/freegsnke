@@ -19,13 +19,29 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.   
 """
 
+from __future__ import annotations
+
 import numpy as np
 
 
 class mode_decomposition:
     """Sets up the vessel mode decomposition to be used by the dynamic solver(s)"""
 
-    def __init__(self, coil_resist, coil_self_ind, n_coils, n_active_coils):
+    n_active_coils: int
+    n_coils: int
+    coil_resist: np.ndarray
+    coil_self_ind: np.ndarray
+    w_passive: np.ndarray
+    Pmatrix: np.ndarray
+    Pmatrix_inverse: np.ndarray
+
+    def __init__(
+        self,
+        coil_resist: np.ndarray,
+        coil_self_ind: np.ndarray,
+        n_coils: int,
+        n_active_coils: int,
+    ) -> None:
         """Instantiates the class.
         Matrix data calculated here is used to reformulate the system of circuit eqs,
         primarily in circuit_eq_metal.py
@@ -41,9 +57,8 @@ class mode_decomposition:
         """
 
         # check number of coils is compatible with data provided
-        check = len(coil_resist) == n_coils
-        check *= np.size(coil_self_ind) == n_coils**2
-        if check == False:
+        check = (len(coil_resist) == n_coils) and (np.size(coil_self_ind) == n_coils**2)
+        if not check:
             raise ValueError(
                 "Resistance vector or self inductance matrix are not compatible with number of coils"
             )
@@ -112,7 +127,7 @@ class mode_decomposition:
             self.Pmatrix.T @ self.Pmatrix, self.Pmatrix.T
         )
 
-    def normal_modes_greens(self, eq_vgreen):
+    def normal_modes_greens(self, eq_vgreen: np.ndarray) -> np.ndarray:
         """
         Calculate the Green functions of the vessel normal modes.
 

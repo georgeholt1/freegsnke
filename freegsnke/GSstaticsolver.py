@@ -19,7 +19,10 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+from __future__ import annotations
+
 from copy import deepcopy
+from typing import Any
 
 import freegs4e
 import numpy as np
@@ -69,12 +72,12 @@ class NKGSsolver:
 
     def __init__(
         self,
-        eq,
-        l2_reg=1e-6,
-        collinearity_reg=1e-6,
-        seed=42,
-        gs_operator_order=4,
-    ):
+        eq: Any,
+        l2_reg: float = 1e-6,
+        collinearity_reg: float = 1e-6,
+        seed: int = 42,
+        gs_operator_order: int = 4,
+    ) -> None:
         """
         Initialise the Grad–Shafranov nonlinear solver.
 
@@ -216,7 +219,7 @@ class NKGSsolver:
         # random generator used for NK search direction exploration
         self.rng = np.random.default_rng(seed=seed)
 
-    def _build_boundary_green(self, source_mask):
+    def _build_boundary_green(self, source_mask: np.ndarray) -> np.ndarray:
         """Build the boundary Green matrix for a selected set of source points."""
         source_indices = np.flatnonzero(source_mask)
         boundary_indices = np.ravel_multi_index(
@@ -241,11 +244,16 @@ class NKGSsolver:
         greenfunc[np.flatnonzero(matches), positions[matches]] = 0.0
         return np.ascontiguousarray(greenfunc * self.dRdZ)
 
-    def _boundary_flux_from_jtor(self, jtor):
+    def _boundary_flux_from_jtor(self, jtor: np.ndarray) -> np.ndarray:
         """Return boundary flux from plasma current inside the limiter."""
         return self.greenfunc @ jtor[self.plasma_source_mask]
 
-    def freeboundary(self, plasma_psi, tokamak_psi, profiles):
+    def freeboundary(
+        self,
+        plasma_psi: np.ndarray,
+        tokamak_psi: np.ndarray,
+        profiles: Any,
+    ) -> None:
         """
         Apply free-boundary Grad–Shafranov boundary conditions and compute
         plasma current source terms.
@@ -350,7 +358,12 @@ class NKGSsolver:
         self.rhs[-1, :] = self.psi_boundary[-1, :]
         self.rhs[:, -1] = self.psi_boundary[:, -1]
 
-    def F_function(self, plasma_psi, tokamak_psi, profiles):
+    def F_function(
+        self,
+        plasma_psi: np.ndarray,
+        tokamak_psi: np.ndarray,
+        profiles: Any,
+    ) -> np.ndarray:
         """
         Compute the nonlinear Grad–Shafranov residual written as a root-finding problem.
 
@@ -433,7 +446,7 @@ class NKGSsolver:
 
         return residual
 
-    def port_critical(self, eq, profiles):
+    def port_critical(self, eq: Any, profiles: Any) -> None:
         """
         Transfer critical equilibrium and topology information from the
         plasma profile solver to the equilibrium object after solving
@@ -503,7 +516,7 @@ class NKGSsolver:
         except:
             pass
 
-    def relative_norm_residual(self, res, psi):
+    def relative_norm_residual(self, res: np.ndarray, psi: np.ndarray) -> float:
         """
         Compute a relative residual using Euclidean (L2) norm normalisation.
 
@@ -540,9 +553,11 @@ class NKGSsolver:
         • This metric is sensitive to small ||ψ|| values.
         • Used as a primary convergence indicator during nonlinear solves.
         """
-        return np.linalg.norm(res) / np.linalg.norm(psi)
+        return float(np.linalg.norm(res) / np.linalg.norm(psi))
 
-    def relative_del_residual(self, res, psi):
+    def relative_del_residual(
+        self, res: np.ndarray, psi: np.ndarray
+    ) -> tuple[float, float]:
         """
         Compute a relative residual measure based on the range (max − min)
         of the residual and flux field.
@@ -599,21 +614,21 @@ class NKGSsolver:
 
     def forward_solve(
         self,
-        eq,
-        profiles,
-        target_relative_tolerance,
-        max_solving_iterations=100,
-        Picard_handover=0.11,
-        step_size=2.5,
-        scaling_with_n=-1.0,
-        target_relative_unexplained_residual=0.2,
-        max_n_directions=16,
-        max_rel_update_size=0.2,
-        clip=10,
-        force_up_down_symmetric=False,
-        verbose=False,
-        suppress=False,
-    ):
+        eq: Any,
+        profiles: Any,
+        target_relative_tolerance: float,
+        max_solving_iterations: int = 100,
+        Picard_handover: float = 0.11,
+        step_size: float = 2.5,
+        scaling_with_n: float = -1.0,
+        target_relative_unexplained_residual: float = 0.2,
+        max_n_directions: int = 16,
+        max_rel_update_size: float = 0.2,
+        clip: float = 10,
+        force_up_down_symmetric: bool = False,
+        verbose: bool = False,
+        suppress: bool = False,
+    ) -> None:
         """
         Solve the forward static Grad–Shafranov (GS) equilibrium problem.
 
@@ -1003,7 +1018,9 @@ class NKGSsolver:
                     f"Forward static solve SUCCESS. Tolerance {rel_change:.2e} (vs. requested {target_relative_tolerance:.2e}) reached in {int(iterations)}/{int(max_solving_iterations)} iterations."
                 )
 
-    def get_rel_delta_psit(self, delta_current, profiles, vgreen):
+    def get_rel_delta_psit(
+        self, delta_current: np.ndarray, profiles: Any, vgreen: np.ndarray
+    ) -> float:
         """
         Estimate the relative core-region flux perturbation induced by a
         requested coil current change.
@@ -1127,9 +1144,11 @@ class NKGSsolver:
         # ------------------------------------------------------------
         rel_delta_psit /= np.linalg.norm(self.tokamak_psi) + 1e-6
 
-        return rel_delta_psit
+        return float(rel_delta_psit)
 
-    def get_rel_delta_psi(self, new_psi, previous_psi, profiles):
+    def get_rel_delta_psi(
+        self, new_psi: np.ndarray, previous_psi: np.ndarray, profiles: Any
+    ) -> float:
         """
         Compute the relative change between two flux states in the plasma core.
 
@@ -1223,19 +1242,19 @@ class NKGSsolver:
         # ------------------------------------------------------------
         rel_delta_psit /= np.linalg.norm((new_psi + previous_psi) * core_mask)
 
-        return rel_delta_psit
+        return float(rel_delta_psit)
 
     def optimize_currents(
         self,
-        eq,
-        profiles,
-        constrain,
-        target_relative_tolerance,
-        relative_psit_size=1e-3,
-        l2_reg=1e-12,
-        verbose=False,
-        force_up_down_symmetric=False,
-    ):
+        eq: Any,
+        profiles: Any,
+        constrain: Any,
+        target_relative_tolerance: float,
+        relative_psit_size: float = 1e-3,
+        l2_reg: float | np.ndarray = 1e-12,
+        verbose: bool = False,
+        force_up_down_symmetric: bool = False,
+    ) -> tuple[np.ndarray, float]:
         """
         Compute coil current updates using the full (plasma-aware) Jacobian.
 
@@ -1450,32 +1469,32 @@ class NKGSsolver:
 
     def inverse_solve(
         self,
-        eq,
-        profiles,
-        constrain,
-        target_relative_tolerance,
-        target_relative_psit_update=1e-3,
-        max_solving_iterations=100,
-        max_iter_per_update=5,
-        Picard_handover=0.15,
-        step_size=2.5,
-        scaling_with_n=-1.0,
-        target_relative_unexplained_residual=0.3,
-        max_n_directions=16,
-        clip=10,
-        max_rel_update_size=0.15,
-        threshold_val=0.18,
-        l2_reg=1e-9,
-        forward_tolerance_increase=100,
-        max_rel_psit=0.02,
-        damping_factor=0.995,
-        use_full_Jacobian=True,
-        full_jacobian_handover=[1e-5, 7e-3],
-        l2_reg_fj=1e-8,
-        force_up_down_symmetric=False,
-        verbose=False,
-        suppress=False,
-    ):
+        eq: Any,
+        profiles: Any,
+        constrain: Any,
+        target_relative_tolerance: float,
+        target_relative_psit_update: float = 1e-3,
+        max_solving_iterations: int = 100,
+        max_iter_per_update: int = 5,
+        Picard_handover: float = 0.15,
+        step_size: float = 2.5,
+        scaling_with_n: float = -1.0,
+        target_relative_unexplained_residual: float = 0.3,
+        max_n_directions: int = 16,
+        clip: float = 10,
+        max_rel_update_size: float = 0.15,
+        threshold_val: float = 0.18,
+        l2_reg: float | np.ndarray = 1e-9,
+        forward_tolerance_increase: float = 100,
+        max_rel_psit: float = 0.02,
+        damping_factor: float = 0.995,
+        use_full_Jacobian: bool = True,
+        full_jacobian_handover: list[float] = [1e-5, 7e-3],
+        l2_reg_fj: float = 1e-8,
+        force_up_down_symmetric: bool = False,
+        verbose: bool = False,
+        suppress: bool = False,
+    ) -> None:
         """Inverse solver for static free-boundary Grad–Shafranov equilibria.
 
         This routine solves a coupled inverse problem:
@@ -1653,11 +1672,11 @@ class NKGSsolver:
 
         # iteration counters and damping initialisation
         iterations = 0
-        damping = 1
+        damping = 1.0
 
         # track history of relative tokamak flux updates
         self.rel_psit_updates = [max_rel_psit]
-        previous_rel_delta_psit = 1
+        previous_rel_delta_psit = 1.0
 
         # track constraint loss history
         self.constrain_loss = []
@@ -1718,6 +1737,10 @@ class NKGSsolver:
             # --------------------------------------------------------
             # Parameter selection depending on proximity to solution
             # --------------------------------------------------------
+            this_l2_reg: float | np.ndarray
+            this_max_iter_per_update: int
+            this_max_rel_psit: Any
+
             if check_equilibrium:
                 # adaptive restriction on tokamak flux update
                 this_max_rel_psit = np.mean(self.rel_psit_updates[-6:])
@@ -1736,7 +1759,7 @@ class NKGSsolver:
                     # use more iterations if 'close to solution'
                     this_max_iter_per_update = 50
                 else:
-                    this_max_iter_per_update = 1.0 * max_iter_per_update
+                    this_max_iter_per_update = int(max_iter_per_update)
             else:
                 # early phase: allow larger exploratory steps
                 this_max_rel_psit = False
@@ -1921,31 +1944,31 @@ class NKGSsolver:
 
     def solve(
         self,
-        eq,
-        profiles,
-        constrain=None,
-        target_relative_tolerance=1e-5,
-        target_relative_psit_update=1e-3,
-        max_solving_iterations=100,
-        max_iter_per_update=5,
-        Picard_handover=0.1,
-        step_size=2.5,
-        scaling_with_n=-1.0,
-        target_relative_unexplained_residual=0.3,
-        max_n_directions=16,
-        clip=10,
-        max_rel_update_size=0.15,
-        l2_reg=1e-9,
-        forward_tolerance_increase=100,
-        max_rel_psit=0.01,
-        damping_factor=0.98,
-        use_full_Jacobian=True,
-        full_jacobian_handover=[1e-5, 7e-3],
-        l2_reg_fj=1e-8,
-        force_up_down_symmetric=False,
-        verbose=False,
-        suppress=False,
-    ):
+        eq: Any,
+        profiles: Any,
+        constrain: Any | None = None,
+        target_relative_tolerance: float = 1e-5,
+        target_relative_psit_update: float = 1e-3,
+        max_solving_iterations: int = 100,
+        max_iter_per_update: int = 5,
+        Picard_handover: float = 0.1,
+        step_size: float = 2.5,
+        scaling_with_n: float = -1.0,
+        target_relative_unexplained_residual: float = 0.3,
+        max_n_directions: int = 16,
+        clip: float = 10,
+        max_rel_update_size: float = 0.15,
+        l2_reg: float | np.ndarray = 1e-9,
+        forward_tolerance_increase: float = 100,
+        max_rel_psit: float = 0.01,
+        damping_factor: float = 0.98,
+        use_full_Jacobian: bool = True,
+        full_jacobian_handover: list[float] = [1e-5, 7e-3],
+        l2_reg_fj: float = 1e-8,
+        force_up_down_symmetric: bool = False,
+        verbose: bool = False,
+        suppress: bool = False,
+    ) -> None:
         """
         Unified entry point for solving Grad–Shafranov problems
         (forward or inverse).

@@ -19,6 +19,10 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.   
 """
 
+from __future__ import annotations
+
+from typing import Any, Callable, Sequence
+
 import numpy as np
 
 
@@ -34,9 +38,35 @@ class nksolver:
     F(x_0 + dx) is minimum.
     """
 
+    problem_dimension: int
+    dummy_hessenberg_residual: np.ndarray
+    verbose: bool
+    l2_reg: float
+    collinearity_reg: float
+    n_it: int
+    max_dim: int
+    Q: np.ndarray
+    Qn: np.ndarray
+    G: np.ndarray
+    Gn: np.ndarray
+    n_G: np.ndarray
+    collinearity: np.ndarray
+    Hm: np.ndarray
+    x0: np.ndarray
+    R0: np.ndarray
+    nR0: float
+    coeffs: np.ndarray
+    dx: np.ndarray
+    relative_unexplained_residuals: list[float]
+    collinear_aware_regulariz: np.ndarray
+
     def __init__(
-        self, problem_dimension, l2_reg=1e-6, collinearity_reg=1e-6, verbose=False
-    ):
+        self,
+        problem_dimension: int,
+        l2_reg: float = 1e-6,
+        collinearity_reg: float = 1e-6,
+        verbose: bool = False,
+    ) -> None:
         """Instantiates the class.
 
         Parameters
@@ -61,14 +91,14 @@ class nksolver:
 
     def Arnoldi_unit(
         self,
-        x0,
-        dx,
-        R0,
+        x0: np.ndarray,
+        dx: np.ndarray,
+        R0: np.ndarray,
         # nR0,
-        F_function,
-        args,
-        build_next=True,
-    ):
+        F_function: Callable[..., np.ndarray],
+        args: Sequence[Any] | list[Any],
+        build_next: bool = True,
+    ) -> np.ndarray | None:
         """Explores direction dx and proposes new direction for next exploration.
 
         Parameters
@@ -101,7 +131,7 @@ class nksolver:
                 candidate_x = x0 + dx1
                 R_dx = F_function(candidate_x, *args)
                 res_calculated = True
-            except:
+            except Exception:
                 dx1 *= 0.75
                 self.Q[:, self.n_it] *= 0.75
         useful_residual = R_dx - R0
@@ -162,8 +192,9 @@ class nksolver:
             # Omega[:-1, :-1] = 1.0 * self.Omega
             # self.Omega = np.matmul(givrot, Omega)
             return next_candidate
+        return None
 
-    def set_regularization(self, l2_reg, collinearity_reg):
+    def set_regularization(self, l2_reg: float, collinearity_reg: float) -> None:
         """Sets the regularization coeffs
 
         Parameters
@@ -178,19 +209,19 @@ class nksolver:
 
     def Arnoldi_iteration(
         self,
-        x0,
-        dx,
-        R0,
-        F_function,
-        args,
-        step_size,
-        scaling_with_n,
-        target_relative_unexplained_residual,
-        max_n_directions,
-        clip,
+        x0: np.ndarray,
+        dx: np.ndarray,
+        R0: np.ndarray,
+        F_function: Callable[..., np.ndarray],
+        args: Sequence[Any] | list[Any],
+        step_size: float,
+        scaling_with_n: float,
+        target_relative_unexplained_residual: float,
+        max_n_directions: int,
+        clip: float,
         # l2_reg=1e-5,
         # collinearity_reg=1e-6,
-    ):
+    ) -> None:
         """Performs the iteration of the NK solution method:
         1) explores direction dx
         2) checks what fraction of the residual can be (linearly) canceled
@@ -229,7 +260,7 @@ class nksolver:
         self.R0 = np.copy(R0)
 
         self.relative_unexplained_residuals = []
-        nR0 = np.linalg.norm(R0)
+        nR0 = float(np.linalg.norm(R0))
         self.nR0 = 1.0 * nR0
         self.max_dim = int(max_n_directions + 1)
 
@@ -258,23 +289,34 @@ class nksolver:
 
         # prepare for first direction exploration
         self.n_it = 0
-        self.n_it_tot = 0
-        this_step_size = adjusted_step_size * ((1 + self.n_it) ** scaling_with_n)
-
-        dx /= np.linalg.norm(dx)
-        # # new addition
-        # if clip_quantiles is not None:
-        #     q1, q2 = np.quantile(dx, clip_quantiles)
-        #     dx = np.clip(dx, q1, q2)
-
-        self.Qn[:, self.n_it] = np.copy(dx)
-        dx *= this_step_size
-        self.Q[:, self.n_it] = np.copy(dx)
-
         explore = 1
+        # explore first direction
+        cand_dx = self.Arnoldi_unit(
+            self.x0,
+            dx,
+            self.R0,
+            # self.nR0,
+            F_function,
+            args,
+        )
+        assert cand_dx is not None
+        dx = cand_dx
+        self.Q[:, 0] = np.copy(dx)
+        self.Qn[:, 0] = np.copy(dx)
+        dx *= adjusted_step_size
+
         while explore:
-            # build Arnoldi update
-            dx = self.Arnoldi_unit(x0, dx, R0, F_function, args)
+            # explore candidate direction
+            cand_dx = self.Arnoldi_unit(
+                self.x0,
+                dx,
+                self.R0,
+                # self.nR0,
+                F_function,
+                args,
+            )
+            assert cand_dx is not None
+            dx = cand_dx
 
             # prepare to calculate explained residual
             collinearity_penalty = np.diag(
@@ -307,11 +349,10 @@ class nksolver:
                 self.G[:, : self.n_it + 1] * coeffs[np.newaxis, :], axis=1
             )
             self.relative_unexplained_residuals.append(
-                np.linalg.norm(R0 + expl_res) / nR0
+                float(np.linalg.norm(R0 + expl_res) / nR0)
             )
 
-            explore = self.n_it < max_n_directions
-            explore *= (
+            explore = (self.n_it < max_n_directions) and (
                 self.relative_unexplained_residuals[-1]
                 > target_relative_unexplained_residual
             )

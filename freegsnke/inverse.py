@@ -19,7 +19,10 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+from __future__ import annotations
+
 import itertools
+from typing import Any, Sequence
 
 import cvxpy
 import numpy as np
@@ -33,19 +36,19 @@ class Inverse_optimizer:
 
     def __init__(
         self,
-        isoflux_set=None,
-        null_points=None,
-        null_points_2nd_order=None,
-        psi_vals=None,
-        coil_current_limits=None,
-        psi_norm_limits=None,
+        isoflux_set: Sequence[Any] | np.ndarray | None = None,
+        null_points: Sequence[Any] | np.ndarray | None = None,
+        null_points_2nd_order: Sequence[Any] | np.ndarray | None = None,
+        psi_vals: Sequence[Any] | np.ndarray | None = None,
+        coil_current_limits: Sequence[Any] | None = None,
+        psi_norm_limits: Sequence[Any] | np.ndarray | None = None,
         *,
-        weight_isoflux=1.0,
-        weight_nulls=1.0,
-        weight_psi=1.0,
-        mu_coils=1e5,
-        mu_psi_norm=1e6,
-    ):
+        weight_isoflux: float = 1.0,
+        weight_nulls: float = 1.0,
+        weight_psi: float = 1.0,
+        mu_coils: float = 1e5,
+        mu_psi_norm: float = 1e6,
+    ) -> None:
         """
         Initialise magnetic constraint definitions for inverse equilibrium optimisation.
 
@@ -166,15 +169,15 @@ class Inverse_optimizer:
         # ------------------------------------------------------------
         # Isoflux constraint processing
         # ------------------------------------------------------------
-        self.isoflux_set = isoflux_set
-        self.isoflux_weight = []
+        self.isoflux_set: Any = isoflux_set
+        self.isoflux_weight: Any = []
         if isoflux_set is not None:
 
             # Test if structure is already nested numeric arrays
             # If indexing succeeds, we assume isoflux_set contains
             # structured coordinate arrays.
             try:
-                type(self.isoflux_set[0][0][0])
+                type(self.isoflux_set[0][0][0])  # type: ignore[index]
                 self.isoflux_set = []
                 for isoflux in isoflux_set:
                     iso_set, weights = self._extract_isoflux_constraints_weights(
@@ -195,14 +198,14 @@ class Inverse_optimizer:
         # ------------------------------------------------------------
         # Null point constraints (X-points, O-points)
         # ------------------------------------------------------------
-        self.null_points = null_points
+        self.null_points: Any = null_points
         if self.null_points is not None:
             self.null_points = np.array(self.null_points)
 
         # ------------------------------------------------------------
         # Second-order null point constraints (snowflakes)
         # ------------------------------------------------------------
-        self.null_points_2nd_order = null_points_2nd_order
+        self.null_points_2nd_order: Any = null_points_2nd_order
         if self.null_points_2nd_order is not None:
             self.null_points_2nd_order = np.array(self.null_points_2nd_order)
 
@@ -211,7 +214,7 @@ class Inverse_optimizer:
         # These impose ψ(R,Z) = ψ_target at specified locations
         # ------------------------------------------------------------
 
-        self.psi_vals = psi_vals
+        self.psi_vals: Any = psi_vals
         if self.psi_vals is not None:
 
             Rcoords, Zcoords, psi_values = self.psi_vals
@@ -227,13 +230,13 @@ class Inverse_optimizer:
         # ------------------------------------------------------------
         # Coil current bounds and penalty regularisation weights
         # ------------------------------------------------------------
-        self.coil_current_limits = coil_current_limits
+        self.coil_current_limits: Any = coil_current_limits
         self.mu_coils = mu_coils
 
         # ------------------------------------------------------------
         # Normalised psi bounds and penalty regularisation weights
         # ------------------------------------------------------------
-        self.psi_norm_limits = (
+        self.psi_norm_limits: Any = (
             None if psi_norm_limits is None else np.array(psi_norm_limits)
         )
         self.mu_psi_norm = mu_psi_norm
@@ -246,7 +249,9 @@ class Inverse_optimizer:
         self.weight_psi = weight_psi
 
     @staticmethod
-    def _extract_isoflux_constraints_weights(isoflux_set: np.ndarray):
+    def _extract_isoflux_constraints_weights(
+        isoflux_set: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Extract isoflux constraint locations and associated weights.
 
@@ -282,7 +287,7 @@ class Inverse_optimizer:
             f"Expected isoflux set to be of shape (2, N) or (3, N) not {isoflux_set.shape}"
         )
 
-    def prepare_for_solve(self, eq):
+    def prepare_for_solve(self, eq: Any) -> None:
         """
         Prepare constraint solver quantities after object instantiation.
 
@@ -315,7 +320,7 @@ class Inverse_optimizer:
         self.build_control_coils(eq)
         self.build_greens(eq)
 
-    def source_domain_properties(self, eq):
+    def source_domain_properties(self, eq: Any) -> None:
         """
         Source and cache computational domain geometry from the equilibrium object.
 
@@ -339,7 +344,7 @@ class Inverse_optimizer:
         self.eqR = eq.R
         self.eqZ = eq.Z
 
-    def build_control_coils(self, eq):
+    def build_control_coils(self, eq: Any) -> None:
         """
         Identify and cache coil systems available for active control.
 
@@ -402,7 +407,7 @@ class Inverse_optimizer:
         # cache domain geometry (PDE solver grid)
         self.source_domain_properties(eq)
 
-    def build_control_currents(self, eq):
+    def build_control_currents(self, eq: Any) -> None:
         """
         Extract coil current values for controllable coils from the equilibrium object.
 
@@ -426,7 +431,7 @@ class Inverse_optimizer:
 
         self.control_currents = eq.tokamak.getCurrentsVec(coils=self.control_coils)
 
-    def build_control_currents_Vec(self, full_currents_vec):
+    def build_control_currents_Vec(self, full_currents_vec: np.ndarray) -> None:
         """
         Extract controllable coil currents from a full coil current vector.
 
@@ -454,7 +459,7 @@ class Inverse_optimizer:
 
         self.control_currents = full_currents_vec[self.control_mask]
 
-    def build_full_current_vec(self, eq):
+    def build_full_current_vec(self, eq: Any) -> None:
         """
         Build full coil current vector from equilibrium object.
 
@@ -478,7 +483,9 @@ class Inverse_optimizer:
         """
         self.full_currents_vec = eq.tokamak.getCurrentsVec()
 
-    def rebuild_full_current_vec(self, control_currents, filling=0):
+    def rebuild_full_current_vec(
+        self, control_currents: np.ndarray, filling: float = 0
+    ) -> np.ndarray:
         """
         Reconstruct a full coil current vector from control coil values.
 
@@ -512,7 +519,7 @@ class Inverse_optimizer:
             full_current_vec[self.coil_order[self.control_coils[i][0]]] = current
         return full_current_vec
 
-    def build_greens(self, eq):
+    def build_greens(self, eq: Any) -> None:
         """
         Construct and cache magnetic Green's function response operators.
 
@@ -659,7 +666,7 @@ class Inverse_optimizer:
                 R=self.psi_norm_limits[:, 0], Z=self.psi_norm_limits[:, 1]
             )
 
-    def build_plasma_vals(self, trial_plasma_psi):
+    def build_plasma_vals(self, trial_plasma_psi: np.ndarray) -> None:
         """
         Compute and cache plasma-dependent magnetic quantities from a candidate flux solution.
 
@@ -844,7 +851,9 @@ class Inverse_optimizer:
                     self.psi_vals[0], self.psi_vals[1], grid=False
                 )
 
-    def build_isoflux_lsq(self, full_currents_vec):
+    def build_isoflux_lsq(
+        self, full_currents_vec: np.ndarray
+    ) -> tuple[list[np.ndarray], list[np.ndarray], list[float]]:
         """
         Construct linear least-squares system for enforcing isoflux magnetic constraints.
 
@@ -899,9 +908,9 @@ class Inverse_optimizer:
             P_control = coil control projection operator
         """
 
-        loss = []
-        A = []
-        b = []
+        loss: list[float] = []
+        A: list[np.ndarray] = []
+        b: list[np.ndarray] = []
 
         # loop over each isoflux set
         for i, isoflux in enumerate(self.isoflux_set):
@@ -918,6 +927,9 @@ class Inverse_optimizer:
             # isoflux constraint violation are for pairs of constraints within the isoflux set
             # e.g. 8 isoflux constraints means b has 28 elements (28 choose 2).
             # We weight the element of b by the minimum weight of the two constraints that make the pair
+            A[i] *= np.array(
+                list(itertools.combinations(self.isoflux_weight[i], 2))
+            ).min(axis=1)[:, np.newaxis]
             b_val *= np.array(
                 list(itertools.combinations(self.isoflux_weight[i], 2))
             ).min(axis=1)
@@ -925,11 +937,13 @@ class Inverse_optimizer:
             b.append(-b_val)
 
             # constraint violation magnitude
-            loss.append(np.linalg.norm(b_val))
+            loss.append(float(np.linalg.norm(b_val)))
 
         return A, b, loss
 
-    def build_null_points_lsq(self, full_currents_vec):
+    def build_null_points_lsq(
+        self, full_currents_vec: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, list[float]]:
         """
         Construct a least-squares system enforcing magnetic null-point constraints.
 
@@ -996,13 +1010,13 @@ class Inverse_optimizer:
         A_r = self.Gbr[self.control_mask].T
         b_r = np.sum(self.Gbr * full_currents_vec[:, np.newaxis], axis=0)
         b_r += self.brp
-        loss = [np.linalg.norm(b_r)]
+        loss = [float(np.linalg.norm(b_r))]
 
         # vertical field constraint
         A_z = self.Gbz[self.control_mask].T
         b_z = np.sum(self.Gbz * full_currents_vec[:, np.newaxis], axis=0)
         b_z += self.bzp
-        loss.append(np.linalg.norm(b_z))
+        loss.append(float(np.linalg.norm(b_z)))
 
         # stack contraints
         A = np.concatenate((A_r, A_z), axis=0)
@@ -1010,7 +1024,9 @@ class Inverse_optimizer:
 
         return A, b, loss
 
-    def build_psi_vals_lsq(self, full_currents_vec):
+    def build_psi_vals_lsq(
+        self, full_currents_vec: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, list[float]]:
         """
         Construct a least-squares system enforcing direct flux value constraints.
 
@@ -1079,11 +1095,11 @@ class Inverse_optimizer:
         b *= -1
 
         # normalised loss
-        normalised_loss = np.linalg.norm(b) / self.norm_psi_vals
+        normalised_loss = float(np.linalg.norm(b) / self.norm_psi_vals)
 
         return A, b, [normalised_loss]
 
-    def build_lsq(self, full_currents_vec):
+    def build_lsq(self, full_currents_vec: np.ndarray) -> None:
         """
         Assemble the global least-squares optimisation system combining all
         active magnetic and control constraints.
@@ -1139,10 +1155,9 @@ class Inverse_optimizer:
         """
 
         # storage
-        loss = 0
         A = np.empty(shape=(0, self.n_control_coils))
         b = np.empty(shape=0)
-        loss = []
+        loss: list[float] = []
 
         # isfolux constrains
         if self.isoflux_set is not None:
@@ -1184,8 +1199,13 @@ class Inverse_optimizer:
         self.loss = np.array(loss)
 
     def optimize_currents(
-        self, eq, profiles, full_currents_vec, trial_plasma_psi, l2_reg
-    ):
+        self,
+        eq: Any,
+        profiles: Any,
+        full_currents_vec: np.ndarray,
+        trial_plasma_psi: np.ndarray,
+        l2_reg: float | np.ndarray,
+    ) -> tuple[np.ndarray, float]:
         """
         Solve the constrained least-squares optimisation problem for coil current updates.
 
@@ -1278,22 +1298,22 @@ class Inverse_optimizer:
             delta_current = np.linalg.solve(
                 self.A.T @ self.A + reg_matrix, self.A.T @ self.b
             )
-            loss = np.linalg.norm(self.loss)
+            loss = float(np.linalg.norm(self.loss))
 
         return delta_current, loss
 
     def optimize_currents_quadratic(
         self,
-        eq,
-        profiles,
-        full_currents_vec,
-        reg_matrix,
+        eq: Any,
+        profiles: Any,
+        full_currents_vec: np.ndarray,
+        reg_matrix: np.ndarray,
         *,
-        mu_coils=None,
-        mu_psi_norm=None,
-        A=None,
-        b=None,
-    ):
+        mu_coils: float | None = None,
+        mu_psi_norm: float | None = None,
+        A: np.ndarray | None = None,
+        b: np.ndarray | None = None,
+    ) -> tuple[np.ndarray, float]:
         """
         Solve the regularised constrained least-squares problem using convex optimisation.
 
@@ -1479,20 +1499,21 @@ class Inverse_optimizer:
         # combine magnetic residual loss with slack penalties
         slack_loss = sum([i.value.sum() for i in slack_variables])
 
+        assert delta.value is not None
         return (
             delta.value,
-            np.linalg.norm(self.loss) + slack_loss,
+            float(np.linalg.norm(self.loss) + slack_loss),
         )
 
     def optimize_currents_grad(
         self,
-        full_currents_vec,
-        trial_plasma_psi,
-        isoflux_weight=1.0,
-        null_points_weight=1.0,
-        null_points_2nd_order_weight=1.0,
-        psi_vals_weight=1.0,
-    ):
+        full_currents_vec: np.ndarray,
+        trial_plasma_psi: np.ndarray,
+        isoflux_weight: float = 1.0,
+        null_points_weight: float = 1.0,
+        null_points_2nd_order_weight: float = 1.0,
+        psi_vals_weight: float = 1.0,
+    ) -> tuple[np.ndarray, float]:
         """
         Compute the gradient of the magnetic least-squares objective
         with respect to control coil currents.
@@ -1559,16 +1580,16 @@ class Inverse_optimizer:
             b_weighted[
                 idx : idx + self.nullp_2nd_order_dim
             ] *= null_points_2nd_order_weight
-            idx += self.nullp_dim_2nd_order
+            idx += self.nullp_2nd_order_dim
         if self.psi_vals is not None:
             b_weighted[idx : idx + self.psiv_dim] *= psi_vals_weight
             idx += self.psiv_dim
 
         grad = np.dot(self.A.T, b_weighted)
 
-        return grad, np.linalg.norm(self.loss)
+        return grad, float(np.linalg.norm(self.loss))
 
-    def plot(self, axis=None, show=True):
+    def plot(self, axis: Any | None = None, show: bool = True) -> Any:
         """
         Visualise the active coil control constraints.
 
@@ -1601,7 +1622,7 @@ class Inverse_optimizer:
 
         return plotIOConstraints(self, axis=axis, show=show)
 
-    def prepare_plasma_psi(self, trial_plasma_psi):
+    def prepare_plasma_psi(self, trial_plasma_psi: np.ndarray) -> None:
         """
         Preprocess plasma flux values for normalisation and constraint evaluation.
 
@@ -1619,7 +1640,7 @@ class Inverse_optimizer:
         self.min_psi -= 0.001 * (self.psi0 - self.min_psi)
         self.psi0 -= self.min_psi
 
-    def prepare_plasma_vals_for_plasma(self, trial_plasma_psi):
+    def prepare_plasma_vals_for_plasma(self, trial_plasma_psi: np.ndarray) -> None:
         """
         Precompute plasma-dependent quantities required for plasma optimisation.
 
@@ -1692,7 +1713,7 @@ class Inverse_optimizer:
                     self.psi0 * d_hat_plasma_vals[self.mask_set[i]]
                 )
 
-    def prepare_for_plasma_optimization(self, eq):
+    def prepare_for_plasma_optimization(self, eq: Any) -> None:
         """
         Prepare geometry- and Green's-function-dependent quantities
         required for plasma optimisation.
@@ -1716,7 +1737,9 @@ class Inverse_optimizer:
         self.source_domain_properties(eq)
         self.build_greens(eq=eq)
 
-    def build_plasma_isoflux_lsq(self, full_currents_vec, trial_plasma_psi):
+    def build_plasma_isoflux_lsq(
+        self, full_currents_vec: np.ndarray, trial_plasma_psi: np.ndarray
+    ) -> None:
         """
         Assemble the least-squares system for plasma-only isoflux optimisation.
 
@@ -1786,7 +1809,9 @@ class Inverse_optimizer:
         self.b_plasma = np.concatenate(b, axis=0)
         self.loss_plasma = np.linalg.norm(loss)
 
-    def build_null_points_2nd_order_lsq(self, full_currents_vec):
+    def build_null_points_2nd_order_lsq(
+        self, full_currents_vec: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, list[float]]:
         """
         Construct the linear least-squares system enforcing second-order null point constraints.
 
@@ -1858,7 +1883,7 @@ class Inverse_optimizer:
             self.Gbr_2nd_order * full_currents_vec[:, np.newaxis], axis=0
         )  # coils contribution
         b_r += self.Brp_2nd_order  # plasma contribution
-        loss = [np.linalg.norm(b_r)]
+        loss = [float(np.linalg.norm(b_r))]
 
         # Bz field constraint
         A_z = self.Gbz_2nd_order[self.control_mask].T
@@ -1866,7 +1891,7 @@ class Inverse_optimizer:
             self.Gbz_2nd_order * full_currents_vec[:, np.newaxis], axis=0
         )  # coils contribution
         b_z += self.Bzp_2nd_order  # plasma contribution
-        loss.append(np.linalg.norm(b_z))
+        loss.append(float(np.linalg.norm(b_z)))
 
         # dBrdr field constraint
         A_r_deriv = self.Gdbrdr_2nd_order[self.control_mask].T
@@ -1874,7 +1899,7 @@ class Inverse_optimizer:
             self.Gdbrdr_2nd_order * full_currents_vec[:, np.newaxis], axis=0
         )  # coils contribution
         b_r_deriv += self.dBrdrp_2nd_order  # plasma contribution
-        loss.append(np.linalg.norm(b_r_deriv))
+        loss.append(float(np.linalg.norm(b_r_deriv)))
 
         # dBzdz field constraint
         A_z_deriv = self.Gdbzdz_2nd_order[self.control_mask].T
@@ -1882,7 +1907,7 @@ class Inverse_optimizer:
             self.Gdbzdz_2nd_order * full_currents_vec[:, np.newaxis], axis=0
         )  # coils contribution
         b_z_deriv += self.dBzdzp_2nd_order  # plasma contribution
-        loss.append(np.linalg.norm(b_z_deriv))
+        loss.append(float(np.linalg.norm(b_z_deriv)))
 
         # dBrdz field constraint
         A_r_deriv_cross = self.Gdbrdz_2nd_order[self.control_mask].T
@@ -1890,7 +1915,7 @@ class Inverse_optimizer:
             self.Gdbrdz_2nd_order * full_currents_vec[:, np.newaxis], axis=0
         )  # coils contribution
         b_r_deriv_cross += self.dBrdzp_2nd_order  # plasma contribution
-        loss.append(np.linalg.norm(b_r_deriv_cross))
+        loss.append(float(np.linalg.norm(b_r_deriv_cross)))
 
         # dBzdr field constraint
         A_z_deriv_cross = self.Gdbzdr_2nd_order[self.control_mask].T
@@ -1898,7 +1923,7 @@ class Inverse_optimizer:
             self.Gdbzdr_2nd_order * full_currents_vec[:, np.newaxis], axis=0
         )  # coils contribution
         b_z_deriv_cross += self.dBzdrp_2nd_order  # plasma contribution
-        loss.append(np.linalg.norm(b_z_deriv_cross))
+        loss.append(float(np.linalg.norm(b_z_deriv_cross)))
 
         A = np.concatenate(
             (A_r, A_z, A_r_deriv, A_z_deriv, A_r_deriv_cross, A_z_deriv_cross), axis=0
@@ -1908,7 +1933,12 @@ class Inverse_optimizer:
         )
         return A, b, loss
 
-    def optimize_plasma_psi(self, full_currents_vec, trial_plasma_psi, l2_reg):
+    def optimize_plasma_psi(
+        self,
+        full_currents_vec: np.ndarray,
+        trial_plasma_psi: np.ndarray,
+        l2_reg: float | np.ndarray,
+    ) -> tuple[np.ndarray, float]:
         """
         Solve the regularised least-squares problem for plasma parameters.
 
@@ -1974,4 +2004,4 @@ class Inverse_optimizer:
         rhs = self.A_plasma.T @ self.b_plasma
         delta_current = np.linalg.solve(lhs, rhs)
 
-        return delta_current, self.loss_plasma
+        return delta_current, float(self.loss_plasma)

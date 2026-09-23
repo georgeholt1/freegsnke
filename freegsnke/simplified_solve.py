@@ -21,6 +21,10 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.   
 """
 
+from __future__ import annotations
+
+from typing import Any, Sequence
+
 import numpy as np
 
 from .implicit_euler import implicit_euler_solver
@@ -34,19 +38,41 @@ class simplified_solver_J1:
     (metal current and total plasma current).
     """
 
+    max_internal_timestep: float
+    full_timestep: float
+    plasma_norm_factor: float
+    n_independent_vars: int
+    Mmatrix: np.ndarray
+    Lambdam1: np.ndarray
+    Lmatrix: np.ndarray
+    Rm1: np.ndarray
+    Pm1: np.ndarray
+    Pm1Rm1: np.ndarray
+    Pm1Rm1Mey: np.ndarray
+    MyeP: np.ndarray
+    n_active_coils: int
+    n_coils: int
+    plasma_resistance_1d: np.ndarray
+    solver: implicit_euler_solver
+    empty_U: np.ndarray
+    forcing: np.ndarray
+    residuals: np.ndarray
+    Rp: float
+    handleMyy: Any
+
     def __init__(
         self,
         # eq,
-        coil_numbers,
-        Lambdam1,
-        P,
-        Pm1,
-        Rm1,
-        Mey,
-        plasma_norm_factor,
-        plasma_resistance_1d,
-        full_timestep=0.0001,
-    ):
+        coil_numbers: tuple[int, int] | Sequence[int] | np.ndarray,
+        Lambdam1: np.ndarray,
+        P: np.ndarray,
+        Pm1: np.ndarray,
+        Rm1: np.ndarray,
+        Mey: np.ndarray,
+        plasma_norm_factor: float,
+        plasma_resistance_1d: np.ndarray,
+        full_timestep: float = 0.0001,
+    ) -> None:
         """Initialises the solver for the extensive currents.
 
         Based on the input plasma properties and coupling matrices, it prepares:
@@ -126,7 +152,9 @@ class simplified_solver_J1:
         # dummy voltage vec for residuals
         self.residuals = np.zeros(self.n_independent_vars + 1)
 
-    def reset_timesteps(self, max_internal_timestep, full_timestep):
+    def reset_timesteps(
+        self, max_internal_timestep: float, full_timestep: float
+    ) -> None:
         """Resets the integration timesteps, calling self.solver.set_timesteps
 
         Parameters
@@ -143,7 +171,7 @@ class simplified_solver_J1:
             full_timestep=full_timestep, max_internal_timestep=max_internal_timestep
         )
 
-    def reset_plasma_resistivity(self, plasma_resistance_1d):
+    def reset_plasma_resistivity(self, plasma_resistance_1d: np.ndarray) -> None:
         """Resets the value of the plasma resistivity,
         throught the vector of 'geometric resistances' in the plasma domain
 
@@ -155,8 +183,13 @@ class simplified_solver_J1:
         self.plasma_resistance_1d = plasma_resistance_1d
 
     def prepare_solver(
-        self, hatIy_left, hatIy_0, hatIy_1, active_voltage_vec, Myy_hatIy_left
-    ):
+        self,
+        hatIy_left: np.ndarray,
+        hatIy_0: np.ndarray,
+        hatIy_1: np.ndarray,
+        active_voltage_vec: np.ndarray,
+        Myy_hatIy_left: np.ndarray,
+    ) -> None:
         """Computes the actual matrices that are needed in the ODE for the extensive currents
          and that must be passed to the implicit-Euler solver.
 
@@ -204,8 +237,14 @@ class simplified_solver_J1:
         self.forcing[:-1] = np.dot(self.Pm1Rm1, self.empty_U)
 
     def stepper(
-        self, It, hatIy_left, hatIy_0, hatIy_1, active_voltage_vec, Myy_hatIy_left
-    ):
+        self,
+        It: np.ndarray,
+        hatIy_left: np.ndarray,
+        hatIy_0: np.ndarray,
+        hatIy_1: np.ndarray,
+        active_voltage_vec: np.ndarray,
+        Myy_hatIy_left: np.ndarray,
+    ) -> np.ndarray:
         """Computes and returns the set of extensive currents at time t+dt
 
         Parameters
@@ -239,7 +278,15 @@ class simplified_solver_J1:
         Itpdt = self.solver.full_stepper(It, self.forcing)
         return Itpdt
 
-    def ceq_residuals(self, I_0, I_1, hatIy_left, hatIy_0, hatIy_1, active_voltage_vec):
+    def ceq_residuals(
+        self,
+        I_0: np.ndarray,
+        I_1: np.ndarray,
+        hatIy_left: np.ndarray,
+        hatIy_0: np.ndarray,
+        hatIy_1: np.ndarray,
+        active_voltage_vec: np.ndarray,
+    ) -> np.ndarray:
         """Computes and returns the set of residual for the full lumped circuit equations
         (all metals in normal modes plus contracted plasma eq.) given extensive currents and
         normalised plasma distributions at both times t and t+dt. Uses

@@ -19,6 +19,10 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGSNKE.  If not, see <http://www.gnu.org/licenses/>.   
 """
 
+from __future__ import annotations
+
+from typing import Any, Sequence
+
 import numpy as np
 from scipy.linalg import solve, solve_sylvester
 
@@ -45,19 +49,57 @@ class linear_solver:
     determines the linear plasma response.
     """
 
+    max_internal_timestep: float
+    full_timestep: float
+    plasma_norm_factor: float
+    P: np.ndarray
+    Pm1: np.ndarray
+    Rm1: np.ndarray
+    Pm1Rm1: np.ndarray
+    Pm1Rm1Mey: np.ndarray
+    MyeP: np.ndarray
+    Lambdam1: np.ndarray
+    n_independent_vars: int
+    Mmatrix: np.ndarray
+    M0matrix: np.ndarray
+    dMmatrix: np.ndarray
+    n_active_coils: int
+    n_coils: int
+    solver: implicit_euler_solver
+    plasma_resistance_1d: np.ndarray
+    empty_U: np.ndarray
+    forcing: np.ndarray
+    profiles_forcing: np.ndarray
+    dIydI: np.ndarray
+    dIydtheta: np.ndarray | None
+    hatIy0: np.ndarray
+    Myy_hatIy0: np.ndarray
+    forcing_pars_matrix: np.ndarray | None
+    all_timescales: np.ndarray
+    all_modes: np.ndarray
+    instability_timescale: np.ndarray
+    growth_rates: np.ndarray
+    all_timescales_const_Ip: np.ndarray
+    all_modes_const_Ip: np.ndarray
+    instability_timescale_const_Ip: np.ndarray
+    growth_rates_const_Ip: np.ndarray
+    unstable_modes: np.ndarray
+    all_stability_margins: np.ndarray
+    stability_margin: np.ndarray
+
     def __init__(
         self,
-        coil_numbers,
-        Lambdam1,
-        P,
-        Pm1,
-        Rm1,
-        Mey,
-        plasma_norm_factor,
-        plasma_resistance_1d,
-        max_internal_timestep=0.0001,
-        full_timestep=0.0001,
-    ):
+        coil_numbers: tuple[int, int] | Sequence[int] | np.ndarray,
+        Lambdam1: np.ndarray,
+        P: np.ndarray,
+        Pm1: np.ndarray,
+        Rm1: np.ndarray,
+        Mey: np.ndarray,
+        plasma_norm_factor: float,
+        plasma_resistance_1d: np.ndarray,
+        max_internal_timestep: float = 0.0001,
+        full_timestep: float = 0.0001,
+    ) -> None:
         """
         Initialise the linearised circuit solver.
 
@@ -146,7 +188,7 @@ class linear_solver:
         self.forcing = np.zeros(self.n_independent_vars + 1)
         self.profiles_forcing = np.zeros(self.n_independent_vars + 1)
 
-    def reset_plasma_resistivity(self, plasma_resistance_1d):
+    def reset_plasma_resistivity(self, plasma_resistance_1d: np.ndarray) -> None:
         """
         Update the plasma resistivity profile used by the linearised solver.
 
@@ -165,7 +207,9 @@ class linear_solver:
         self.plasma_resistance_1d = plasma_resistance_1d
         self.set_linearization_point(None, None, None, None)
 
-    def reset_timesteps(self, max_internal_timestep, full_timestep):
+    def reset_timesteps(
+        self, max_internal_timestep: float, full_timestep: float
+    ) -> None:
         """
         Update the timesteps used by the implicit-Euler integrator.
 
@@ -184,7 +228,13 @@ class linear_solver:
             full_timestep=full_timestep, max_internal_timestep=max_internal_timestep
         )
 
-    def set_linearization_point(self, dIydI, dIydtheta, hatIy0, Myy_hatIy0):
+    def set_linearization_point(
+        self,
+        dIydI: np.ndarray | None,
+        dIydtheta: np.ndarray | None,
+        hatIy0: np.ndarray | None,
+        Myy_hatIy0: np.ndarray | None,
+    ) -> None:
         """
         Set or update the linearisation point for the coupled plasma–metal system.
 
@@ -236,9 +286,7 @@ class linear_solver:
             full_timestep=self.full_timestep,
         )
 
-    def build_Mmatrix(
-        self,
-    ):
+    def build_Mmatrix(self) -> None:
         """Initialises the pseudo-inductance matrix of the problem
         M\dot(x) + Rx = forcing
         using the linearisation Jacobian.
@@ -307,10 +355,10 @@ class linear_solver:
 
     def stepper(
         self,
-        It,
-        active_voltage_vec,
-        dtheta_dt,
-    ):
+        It: np.ndarray,
+        active_voltage_vec: np.ndarray,
+        dtheta_dt: np.ndarray,
+    ) -> np.ndarray:
         """Executes the time advancement. Uses the implicit_euler instance.
 
         Parameters
@@ -342,9 +390,7 @@ class linear_solver:
 
         return Itpdt
 
-    def calculate_linear_growth_rate(
-        self,
-    ):
+    def calculate_linear_growth_rate(self) -> None:
         """Looks into the eigenvecotrs of the "M" matrix to find the negative singular values,
         which correspond to the growth rates of instabilities.
 
@@ -379,7 +425,7 @@ class linear_solver:
         self.unstable_modes = self.all_modes_const_Ip[:, mask]
         self.unstable_modes /= np.linalg.norm(self.unstable_modes, axis=0)
 
-    def calculate_pseudo_rigid_projections(self, dRZdI):
+    def calculate_pseudo_rigid_projections(self, dRZdI: np.ndarray) -> np.ndarray:
         """Projects the unstable modes on the vectors of currents
         which best isolate an R or a Z movement of the plasma
 
@@ -406,9 +452,7 @@ class linear_solver:
         )
         return proj
 
-    def calculate_stability_margin(
-        self,
-    ):
+    def calculate_stability_margin(self) -> None:
         """
         Here we calculate the stability margin parameter from:
 
