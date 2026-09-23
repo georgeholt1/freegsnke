@@ -26,6 +26,10 @@ import numpy as np
 from freegs4e.gradshafranov import Greens
 
 from . import nk_solver_H as nk_solver
+from .backend import get_backend, is_rust_available
+
+if is_rust_available():
+    from freegsnke import _freegsnke_rs
 
 
 class NKGSsolver:
@@ -74,6 +78,7 @@ class NKGSsolver:
         collinearity_reg=1e-6,
         seed=42,
         gs_operator_order=4,
+        backend=None,
     ):
         """
         Initialise the Grad–Shafranov nonlinear solver.
@@ -172,6 +177,11 @@ class NKGSsolver:
             raise ValueError("gs_operator_order must be either 2 or 4")
         self.gs_operator_order = gs_operator_order
 
+        # Backend selection
+        if backend is None:
+            backend = get_backend()
+        self.backend = backend
+
         # nonlinear solver backend
         self.nksolver = nk_solver.nksolver(
             problem_dimension=self.nx * self.ny,
@@ -180,15 +190,27 @@ class NKGSsolver:
         )
 
         # linear GS solver used inside nonlinear iteration
-        self.linear_GS_solver = freegs4e.multigrid.createVcycle(
-            nx,
-            ny,
-            gs_operator(eq.R[0, 0], eq.R[-1, 0], eq.Z[0, 0], eq.Z[0, -1]),
-            nlevels=1,
-            ncycle=1,
-            niter=2,
-            direct=True,
-        )
+        if self.backend == "rust" and is_rust_available():
+            A_csc = gs_operator(eq.R[0, 0], eq.R[-1, 0], eq.Z[0, 0], eq.Z[0, -1])(nx, ny).tocsc()
+            self.linear_GS_solver = _freegsnke_rs.RustEllipticSolver.from_csc(
+                A_csc.shape[0],
+                A_csc.shape[1],
+                A_csc.indptr,
+                A_csc.indices,
+                A_csc.data,
+                nx,
+                ny,
+            )
+        else:
+            self.linear_GS_solver = freegs4e.multigrid.createVcycle(
+                nx,
+                ny,
+                gs_operator(eq.R[0, 0], eq.R[-1, 0], eq.Z[0, 0], eq.Z[0, -1]),
+                nlevels=1,
+                ncycle=1,
+                niter=2,
+                direct=True,
+            )
 
         # collect boundary grid indices for Dirichlet conditions
         bndry_indices = np.concatenate(
@@ -206,6 +228,7 @@ class NKGSsolver:
         self.plasma_source_mask = np.asarray(
             eq.limiter_handler.mask_inside_limiter, dtype=bool
         )
+        self.plasma_source_indices = np.flatnonzero(self.plasma_source_mask).astype(np.uint64)
         self.greenfunc = self._build_boundary_green(self.plasma_source_mask)
 
         # Precompute geometric RHS coefficient
@@ -223,14 +246,23 @@ class NKGSsolver:
             (self.bndry_indices[:, 0], self.bndry_indices[:, 1]),
             (self.nx, self.ny),
         )
-        flat_R = self.R.reshape(-1)
-        flat_Z = self.Z.reshape(-1)
-        greenfunc = Greens(
-            flat_R[source_indices][np.newaxis, :],
-            flat_Z[source_indices][np.newaxis, :],
-            flat_R[boundary_indices][:, np.newaxis],
-            flat_Z[boundary_indices][:, np.newaxis],
-        )
+        flat_R = np.ascontiguousarray(self.R.reshape(-1), dtype=np.float64)
+        flat_Z = np.ascontiguousarray(self.Z.reshape(-1), dtype=np.float64)
+
+        if self.backend == "rust" and is_rust_available():
+            greenfunc = _freegsnke_rs.py_compute_greens_matrix(
+                flat_R[source_indices],
+                flat_Z[source_indices],
+                flat_R[boundary_indices],
+                flat_Z[boundary_indices],
+            )
+        else:
+            greenfunc = Greens(
+                flat_R[source_indices][np.newaxis, :],
+                flat_Z[source_indices][np.newaxis, :],
+                flat_R[boundary_indices][:, np.newaxis],
+                flat_Z[boundary_indices][:, np.newaxis],
+            )
 
         # Remove singular self-interactions when the selected sources include
         # points on the computational boundary.
@@ -243,6 +275,12 @@ class NKGSsolver:
 
     def _boundary_flux_from_jtor(self, jtor):
         """Return boundary flux from plasma current inside the limiter."""
+        if self.backend == "rust":
+            return _freegsnke_rs.py_boundary_flux_gather(
+                self.greenfunc,
+                np.ascontiguousarray(jtor.reshape(-1), dtype=np.float64),
+                self.plasma_source_indices,
+            )
         return self.greenfunc @ jtor[self.plasma_source_mask]
 
     def freeboundary(self, plasma_psi, tokamak_psi, profiles):
